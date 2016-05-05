@@ -1,0 +1,148 @@
+Getting Started
+===============
+
+Out of the box, the :class:`VM` class only supports one rule: **end**. This is used to stop
+the processing of the program and can appear any number of times in a program.
+
+A program is plain text.
+
+The Machine as Calculator
+=========================
+
+Here is a simple example:
+
+.. code-block:: python
+
+   >>> from stackvm import VM
+   >>> vm = VM('simpleton', 0.0)
+   >>> vm.feed('1 2 plus end')
+   >>> vm.run()
+   >>> vm.stack
+   <stack.Stack object at 0x00000000071A3C18>
+   >>> print(vm.stack)
+   [Stack: 1, 2, plus]
+   >>> print(vm.registers)
+  {}
+
+What happened? The :meth:`~VM.feed` method tokenizes the string into a list of tokens.
+The :meth:`~VM.run` method steps through the tokens, adding each one to the stack and following
+any rules indicated by the token. In the above example, **plus** seems like it should
+pop the top two items from the stack and push the results onto the stack.
+
+This didn't happen because the :class:`VM` class only supports the **end** rule. The 
+:class:`~library.FiveFunctionLibrary` provides the basic arithemetical functions:
+
+.. code-block:: python
+
+   >>> from stackvm import library
+   >>> vm.import_library(library.FiveFunctionLibrary)
+   >>> vm.reset()
+   >>> vm.run()
+   >>> print(vm.stack)
+   [Stack: 3] 
+
+The :meth:`~VM.reset` method clears the stack and the prepares
+the machine to start the program over again. It does not affect
+the registers. Now that the machine knows about addition, subtraction,
+multiplication, division, and modulo division.
+
+.. code-block:: python
+
+   >>> vm.feed('5 3 - end')
+   >>> vm.run()
+   >>> print(vm.stack)
+   [Stack: 2]
+
+.. note::
+	
+   :meth:`~VM.feed` calls the :meth:`~VM.reset` method for you,
+   so this is fine to do. You only need to call :meth:`~VM.reset`
+   when you aren't changing the program but re-running it through
+   the machine.
+
+Using Registers
+===============
+
+The machine can store and retrieve data from a register. The register
+behaves like a regular Python dictionary, only the keys are changed 
+internally as upper case. 
+
+Write to a register using the register
+name with an apostrophe (``'``) at the end. This removes the value
+written from the stack.
+
+Read from a register 
+by using the name. Reading from a register is automatic. If the 
+register has the key, the value is added to the stack. If the 
+register does not have the name as a key, then the name is 
+written to the stack.
+
+.. code-block::
+
+   >>> vm.feed("42 answer' .")
+   >>> vm.run()
+   >>> print(vm.stack)
+   [Stack: ]
+   >>> print(vm.registers)
+   {'ANSWER': 42}
+   >>> vm.feed('answer .')
+   >>> vm.run()
+   >>> print(vm.stack)
+   [Stack: 42]
+
+Registers can store string data as well. Surround compound strings
+with quotation marks.
+
+.. code-block::
+
+   >>> vm.feed(""" monty firstname' python's lastname' "flying circus" show' . """)
+   >>> vm.run()
+   >>> print(vm.stack)
+   [Stack: ]
+   >>> print(vm.registers)
+   {'FIRSTNAME': 'monty', 'SHOW': 'flying circus', 'LASTNAME': "python's", 'ANSWER': 42}
+  
+Labels
+======
+
+Program labels end with a colon (``:``). They mark places where the 
+machine could jump to during program execution. This allows for branching
+and loops in the program.
+
+The Basic Machine
+=================
+
+The :class:`BaseMachine` includes all the following rules:
+
+    * Addition: ``plus``, ``+`` 
+    * Subtraction: ``minus``, ``-``
+    * Multiplication: ``mul``, ``*``
+    * True Division: ``div``, ``/``
+    * Floor Division: ``floordiv`, ``//``
+    * Modulo Division: ``mod``, ``%``
+    * Exponentation: ``pow``, ``^``
+    * Bitwise And: ``and``, ``&``
+    * Bitwise Or: ``or``, ``|``
+    * Bitwise Xor: ``xor``
+    * Maximum: ``max`` (compares top two values only)
+    * Minimum: ``min`` (compares top two values only)
+    * Less Than: ``lessthan``, ``lt``, ``<``
+    * Less than or Equal to: ``lte``, ``le``, ``<=``
+    * Equal: ``eq``, ``==``
+    * Not Equal: ``ne``, ``!=``
+    * Greater Than : ``greaterthan``, ``gt``, ``>``
+    * Greater than or Equal to: ``gte``, ``>=``
+    * Absolute Value: ``abs`` (only changes top of stack)
+    * Unary Negative: ``neg``, ``~`` (only changes top of stack)
+    * Jump: ``jump``, ``goto`` (pops top of stack and treats it like 
+      an instruction number)
+    * Jump If: ``if`` (top of stack is an instruction number, if the
+      second item on top of the stack evaluates to ``True``, go to that
+      instruction)
+    * Jump If Else: ``ife`` (top of stack is the instruction number if the
+      value is false, the second item on top of the stack is the instruction
+      number if the value is true, the third item on top is the value to test.
+      All three values are removed from the stack.)
+    
+
+   

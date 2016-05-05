@@ -1,0 +1,106 @@
+Machine
+=======
+
+The :class:`VM` class keeps track of the stack, registers, and rules. The 
+:class:`VM` class also compiles and stores programs, and runs those programs.
+Running a program is a series of stack manipulations. 
+
+.. class:: VM(name, version)
+
+    The :class:`VM` class is an abstraction of a virtual machine.
+    It's main purpose is to run a program and manipulate a stack and
+    a register of stored values. 
+    
+    :param str name: The name of the machine
+    :param any version: The version, which is usally just an integer
+                        but can be anything.
+                        
+    .. attribute:: rules
+    
+        A list of tuples, which consist of:
+        
+        #. A list or tuple of *keywords*. These keywords tell the machine
+           to call a method to do something to the :attr:`~VM.stack` when
+           it encounters any of the keywords. 
+        #. A name of a class method to call
+        #. An optional callable object
+        
+    .. attribute:: register
+    
+        Storage for values. See :class:`Namespace` for details.
+        
+    .. attribute:: stack
+    
+        Data stack that is manipulated. See :class:`Stack` for details.
+        
+    .. attribute:: reservedwords
+    
+        A list of words that correspond to rules. This list is updated
+        automatically
+        
+    .. attribute:: debug
+    
+        A flag to print debug messages during the run or not. Prints to
+        sys.stdout.
+    
+    .. attribute:: imported_methods
+    
+        A dictionary mapping imported rules. Used internally.
+        
+    .. attribute:: _lexerclass
+    
+        The _lexerclass is instantiated and used during program compliation.
+        The default is :class:`VMLexer`.
+        
+    .. attribute:: _program
+        
+        A tuple storing the entire program. Each item in the tuple is an
+        individual instruction.
+        
+    .. attribute:: _continue
+    
+        A flag used to determine if the :meth:`~VM.run` method should continue
+        
+    .. attribute:: _curline
+    
+        The instruction number to be processed.
+        
+    .. attribute:: cycles
+    
+        An internal counter for the number of times the :meth:`~VM.step` method
+        is called.
+     
+    .. method:: run(**kwargs)
+
+        Runs the program, setting any keyword arguments to the register before
+        running.
+        
+        Repeatedly calls :meth:`~VM.step` until :attr:`~VM._continue` is ``False``.
+    
+    .. method:: step
+
+        Processes a single instruction. Raises a :class:`~errors.RunTimeError`
+        if the instruction does not exist.
+        
+        If the current instruction is a known keyword, it calls the appropriate
+        method to manipulate the stack.
+        
+        If the current instruction is a storage command (a string ending with ``'``)
+        then it pops the top of the stack and stores that value in the register.
+        
+        If the current instruction matches a name in the register, pushes the 
+        value onto the stack.
+        
+        If the current instruction is a label (string ending in ``:``), does nothing.
+        
+        Otherwise, pushes the instruction onto the stack. Will convert strings
+        representing numbers as numbers before pushing.
+    
+    .. method:: terminate(caller)
+    
+        Sets the :attr:`~VM._continue` flag to 0, which will stop the program
+        if running.
+    
+    .. method:: go_to_instruction(line)
+    
+        Sets the next instruction number.
