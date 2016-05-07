@@ -3,7 +3,10 @@
 
 Simple Last-In-First-Out stack.
 """
-from errors import PopError
+
+from __future__ import (absolute_import, print_function)
+
+from .errors import PopError
 
 class Stack:
     """Stack(items)
