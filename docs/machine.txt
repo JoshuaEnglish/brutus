@@ -104,3 +104,34 @@ Running a program is a series of stack manipulations.
     .. method:: go_to_instruction(line)
     
         Sets the next instruction number.
+        
+    .. method:: set_register(**kwargs)
+    
+        Sets the registers using keyword arguments. It is usually easier
+        to provide these with the :meth:`~VM.run` method.
+        
+    .. method:: do_binary_op(op)
+    
+        Performs a left-associated binary operation on the stack,
+        popping the top two items and pushing the result of ``op``
+        back to the stack.
+        
+        This method calls converts both inputs to integers before
+        calling the ``op``.
+        
+        ``op`` should be callable that accepts two parameters.
+    
+    .. method:: do_unary_op(op)
+    
+        Pops the top of the stack, calls ``op`` and pushes the results
+        back onto the stack.
+        
+        ``op`` should be callable that accepts one parameter.
+        
+        Like :meth:`~VM.do_binary_op`, the top of the stack is
+        converted to an integer value before processing.
+        
+    .. method:: add_binary_rule(matches, op)
+    
+        :param list or tuple matches: List of keywords
+        :param callable op: operation

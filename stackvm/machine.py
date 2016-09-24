@@ -9,7 +9,7 @@ from .errors import (LibraryError, LibraryImportError,
                     MissingMethod, RunTimeError, RuleNameError,
                     FunctionNameError, CallerError)
 from .stack import Stack
-from .library import VMLibrary
+from .library import VMLibrary, ControlOperationsLibrary
 from .tokenizer import VMLexer
 
 
@@ -192,7 +192,7 @@ class VM(object):
         if not isinstance(op, collections.Callable):
             raise ValueError("operation must be callable")
         self.add_rule(matches, 'do_unary_op', op)
-    
+
     def import_library(self, library):
         """Imports the rules and functions of a Library"""
         if not issubclass(library, VMLibrary):
@@ -212,7 +212,7 @@ class VM(object):
 
             self.imported_methods[func] = handler
             self.add_rule(match, func, caller)
-            
+
     ### Begin Compiler Portion ###
     @property
     def program(self):
@@ -371,7 +371,6 @@ class BaseMachine(VM):
         self.add_unary_rule(['abs'], OP.abs)
         self.add_unary_rule(['neg', '~'], OP.neg)
 
-        from library import ControlOperationsLibrary
         self.import_library(ControlOperationsLibrary)
 
 if __name__ == '__main__':
