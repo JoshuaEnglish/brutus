@@ -1,10 +1,16 @@
 Getting Started
 ===============
 
+Stackvm is a simple stack-based virtual machine. It consists of four components:
+
+	#. A LIFO stack
+	#. The registry (a collections.MutableMapping object)
+	#. The program (a tuple of strings)
+	#. The counter (the instruction index)
+
 Out of the box, the :class:`VM` class only supports one rule: **end**. This is used to stop
 the processing of the program and can appear any number of times in a program.
 
-A program is plain text.
 
 The Machine as Calculator
 =========================

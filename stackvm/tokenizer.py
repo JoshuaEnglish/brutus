@@ -51,7 +51,13 @@ class Symbol(int):
     def __repr__(self):
         return "Symbol(%d, '%s')" % (int(self), self._name)
 
+class TerminalSymbol(Symbol):
+    _next_id = 1
+    is_terminal = True
 
+class NonterminalSymbol(Symbol):
+    _next_id = 1000
+    is_terminal = False
 
 
 SNTL = Symbol('SNTL', 0)
@@ -204,10 +210,10 @@ class BaseLexer(object):
         return False
 
 class VMLexer(BaseLexer):
-    def __init__(self, input, language = None, 
+    def __init__(self, input, language = None,
                  start_state='_lex_start', emit_sntl=True):
-        
-        
+
+
         super(VMLexer, self).__init__(input, start_state, emit_sntl)
 
     def _lex_start(self):

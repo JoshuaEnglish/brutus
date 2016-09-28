@@ -4,6 +4,8 @@ The Virtual Machine
 from __future__ import (absolute_import, print_function)
 
 import collections
+import logging
+LOG = logging.getLogger('STACKVM')
 
 from .errors import (LibraryError, LibraryImportError,
                     MissingMethod, RunTimeError, RuleNameError,
@@ -77,7 +79,6 @@ class VM(object):
         self.version = float(version)
         self.rules = [(['END', '.'], 'terminate', None)]
         self.reservedwords = ['END', '.']
-        self.debug = 0
         self.stack = Stack()
         self.stack.clear()
         self.registers = Namespace()
@@ -104,8 +105,7 @@ class VM(object):
         which is determined by the first string. The optional second string is passed
         to the method when called.
         """
-        if self.debug:
-            print("Adding rules for:", matches)
+        LOG.debug("Adding rules for: %s", matches)
         ### Make sure matches are valid
         if not isinstance(matches, (list, tuple)):
             raise RuleNameError("Matches must be list or tuple")
@@ -114,7 +114,6 @@ class VM(object):
             raise RuleNameError("Non-String in matches list")
 
         for match in matches:
-            #print "Testing %s" % match
             if match.upper() in self.reservedwords:
                 raise RuleNameError("Reserved Word %s reused" % (match))
             if match.split()[0] != match:
@@ -281,8 +280,7 @@ class VM(object):
         except IndexError:
             raise RunTimeError("No instruction %d" % self._curline)
 
-        if self.debug:
-            print(self._curline, ":",
+        LOG.debug("%s: %s, %s, %s",self._curline,
                   current_command, self.stack, self.registers)
         self._cycles += 1
 
@@ -304,8 +302,7 @@ class VM(object):
                     handler = proc
                     break
 
-            if self.debug:
-                print("  Handler:", handler, passself)
+            LOG.debug(" Handler: %s with pasself %s", handler, passself)
 
             if handler and passself:
                 handler(caller, self)
@@ -376,7 +373,6 @@ class BaseMachine(VM):
 if __name__ == '__main__':
     TL = BaseMachine('Test', '0.0')
 
-    TL.debug = False
     #TL.set_register(mylife=2)
     TL.feed(""" # very simple choice, attack or run if too weak
 
