@@ -124,6 +124,7 @@ class BaseLexer(object):
         self._start_state = getattr(self, start_state)
         self._emit_sntl = emit_sntl
         self._tokens = []
+        self.state = None
 
     def __iter__(self):
         self._start = self._pos = 0
