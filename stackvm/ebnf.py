@@ -5,6 +5,7 @@ Takes an EBNF definition and creates an Abstract Tree Node
 from __future__ import (absolute_import, print_function)
 
 from operator import attrgetter
+import itertools
 
 import tokenizer
 
@@ -106,16 +107,16 @@ class EBNFParser(object):
 
 from string import ascii_lowercase, ascii_uppercase, whitespace
 # Tokens for the EBNF Tokenizer and Parser
-STARTREPEAT = TerminalSymbol('STARTREPEAT')
-ENDREPEAT = TerminalSymbol('ENDREPEAT')
-STARTGROUP = TerminalSymbol('STARTGROUP')
+STARTREPEAT = TerminalSymbol('STARTREPEAT') # {
+ENDREPEAT = TerminalSymbol('ENDREPEAT') # }
+STARTGROUP = TerminalSymbol('STARTGROUP') # (
 ENDGROUP = TerminalSymbol('ENDGROUP')
 STARTOPTION = TerminalSymbol('STARTOPTION')
 ENDOPTION = TerminalSymbol('ENDOPTION')
 OR = TerminalSymbol('OR')
 SYMBOL = TerminalSymbol('SYMBOL')
 LITERAL = TerminalSymbol('LITERAL')
-RULE = NonTerminalSymbol('rule')
+RULE = NonTerminalSymbol('RULE')
 
 # Tokens for the actual language we're parsing
 PLUS = TerminalSymbol('PLUS')
@@ -210,22 +211,198 @@ def print_node(node, indent=0):
     for child in node.children:
         print_node(child, indent+2)
 
+
+def match_terminal(rule, tokens):
+    if rule.symbol == LITERAL:
+        print("Matching LITERAL", rule.lexeme, tokens[0].lexeme, rule.lexeme==tokens[0].lexeme)
+        if rule.lexeme == tokens[0].lexeme:
+            return Node(tokens[0].symbol.name, tokens[0]), tokens[1:]
+        else:
+            return None, tokens
+    elif rule.lexeme == tokens[0].symbol.name:
+        return Node(tokens[0].symbol.name, tokens[0]), tokens[1:]
+    else:
+        return None, tokens
+
+# if OR in [t.symbol for t in expected[0]]:
+def match_sequence(rulename, rule, tokens):
+    expected = collapse_groups(rule)
+    is_or_group =any(t.symbol == OR for t in expected if not isinstance(t, list))
+    print("match sequence:", rulename, expected, is_or_group )
+    node = Node(rulename)
+
+    if is_or_group:
+        junk, tokens = match_alternate('junk', split_by_or(rule), tokens)
+        node.children.extend(junk.children)
+        return node, tokens
+
+    while expected:
+
+        if isinstance(expected[0], list):
+            child, tokens = match_sequence('junk', expected[0], tokens)
+            node.children.extend(child.children)
+
+        elif expected[0].symbol != LITERAL and expected[0].lexeme != tokens[0].symbol.name:
+            return None, tokens
+
+        elif expected[0].symbol.is_terminal:
+            #print("matching terminal symbol?")
+            child, tokens = match_terminal(expected[0], tokens)
+            if child is not None:
+                node.children.append(child)
+
+        else:
+            pass # deal with non-terminals
+        expected.pop(0)
+    return node, tokens
+
+def match_rule(rulename, parser, tokens):
+    """entry point.
+    """
+    rule = parser.rules.get(rulename)
+    if rule is None:
+        raise SyntaxError("No rule for {}".format(rulename))
+    return match_sequence(rulename, rule, tokens)
+
+
+def match_alternate(rulename, alternates, tokens):
+    """rulename is the name. Alternates is a list of lists. Tokens a list of tokens"""
+    print(rulename, alternates, tokens)
+    for alternate in alternates:
+        node, tokens = match_sequence(rulename, alternate, tokens)
+        if node is not None:
+            return node, tokens
+    raise SyntaxError
+
+def split_by_or(iterable):
+    return [list(g) for k,g in itertools.groupby(iterable, lambda x:x.symbol == OR) if not k]
+
+"""break groups into sublists
+NUMBER STARTGROUP PLUS OR MINUS ENDGROUP NUMBER -> [NUMBER, [PLUS, OR, MINUS], NUMBER]
+"""
+def quick_tree(iterable, res=None):
+    res = [] if res is None else res
+    stuff = list(iterable)
+    while stuff:
+
+        thing = stuff.pop(0)
+
+        if thing.symbol == STARTGROUP:
+
+            stuff, thing = quick_tree(stuff)
+            thing = thing
+
+        elif thing.symbol == ENDGROUP:
+
+            return stuff, res
+        res.append(thing)
+    return stuff, res
+
+def collapse_groups(iterable):
+    return quick_tree(iterable)[1]
+
+class EParser(object):
+    def __init__(self, expectation):
+        self.expected = expectation
+
+class TerminalParser(EParser):
+    def __call__(self, tokens):
+        sym = self.expected.symbol
+        lex = self.expected.lexeme
+        tlex = tokens[0].lexeme
+        tsym = tokens[0].symbol.name
+
+        if (sym == LITERAL and lex == tlex) or lex == tsym:
+            return Node(tsym, tokens[0]), tokens[1:]
+        else:
+            return None, tokens
+
+
+class OrParser(EParser):
+    # expected is a list of lists of parsers
+    def __call__(self, tokens):
+        pass
+
+def build_or_parser(ebnftokens):
+    return OrParser(split_by_or(ebnftokens))
+
+def RuleParser(EParser):
+    """this is the non-terminal version"""
+    def __call__(self, tokens):
+        pass
+
+def build_parser(ebnftoken):
+    if ebnftoken.is_terminal:
+        return TerminalParser(ebnftoken)
+    else:
+        return RuleParser(ebnftoken)
 if __name__ == '__main__':
-    text = """expr := term {(PLUS | MINUS) term};
+    text = """expr := NUMBER {(PLUS | MINUS) NUMBER};
+            sum := NUMBER (PLUS | MINUS) NUMBER;
             term := factor {(MUL | DIV) factor)};
-            factor := NUMBER | OPARENS expr CPARENS;
+            factor := NUMBER | OPARENS NUMBER CPARENS;
+            lfactor := "(" NUMBER ")";
             """
     p = EBNFParser(text)
     #t = EBNFTokenizer('RECALL | NUMBER')
     #print(list(t))
 
-    #print_node(p.match_rule('factor', [tokenizer.Token(NUMBER, 1)]))
-    print_node(p.match_rule('expr', [tokenizer.Token(NUMBER, 2)]))
-    #print_node(p.match_rule('factor', [tokenizer.Token(OPARENS, '('),
-    #                                   tokenizer.Token(NUMBER,3),
-    #                                   tokenizer.Token(CPARENS, ')')]))
+    number = [tokenizer.Token(NUMBER, 2)]
+    parens = [tokenizer.Token(OPARENS, '('), tokenizer.Token(NUMBER,3), tokenizer.Token(CPARENS, ')')]
+    addends = [tokenizer.Token(NUMBER, 1), tokenizer.Token(PLUS, '+'), tokenizer.Token(NUMBER, 2)]
+    subtract = [tokenizer.Token(NUMBER, 3), tokenizer.Token(MINUS, '-'), tokenizer.Token(NUMBER, 2)]
+##    node, remaining = match_sequence('factor', p.rules['factor'][2:], parens)
+##
+##    print_node(node)
+##    assert remaining == []
+##
+##    node, remaining = match_sequence('factor', p.rules['factor'][:1], number )
+##    print_node(node)
+##    assert remaining == []
+##
+##    node, remaining = match_alternate('factor', split_by_or(p.rules['factor']), number )
+##    print_node(node)
+##    assert remaining == []
+##
+##    node, remaining = match_alternate('factor', split_by_or(p.rules['factor']), parens )
+##    print_node(node)
+##    assert remaining == []
+##
+##    try:
+##        node, remaining = match_alternate('factor', split_by_or(p.rules['factor']), [tokenizer.Token(LITERAL, 'if')])
+##    except SyntaxError:
+##        print("Syntax error as expected")
 
+    ### match_rule tests
+    node, remaining = match_rule('sum', p, addends )
+    print_node(node)
+    assert remaining == []
 
+    node, remaining = match_rule('sum', p, subtract )
+    print_node(node)
+    assert remaining == []
 
+    print('testing factor')
+    node, remaining = match_rule('factor', p, parens)
+    print_node(node)
+    assert remaining==[]
 
+##
+##    number_parser = TerminalParser(tokenizer.Token(SYMBOL, "NUMBER"))
+##    node, remaining = number_parser(number)
+##    print_node(node)
+##    assert remaining==[]
+##
+##    node, remaining = number_parser(addends)
+##    print_node(node)
+##    print(remaining)
 
+    print('test lfactor')
+    node, remaining = match_rule('lfactor', p, parens)
+    print_node(node)
+    assert remaining == []
+
+    print('test parensparser')
+    parens_parser = TerminalParser(tokenizer.Token(LITERAL, "("))
+    node, remaining = parens_parser(parens)
+    print_node(node)
