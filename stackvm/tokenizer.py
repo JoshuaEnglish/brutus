@@ -125,6 +125,7 @@ class BaseLexer(object):
         self._emit_sntl = emit_sntl
         self._tokens = []
         self.state = None
+        self.tokenclass = Token
 
     def __iter__(self):
         self._start = self._pos = 0
@@ -149,7 +150,7 @@ class BaseLexer(object):
             if c is None or c not in charset:
                 self._backup()
                 break
-
+            
     def _accept_until(self, charset):
         while True:
             c = self._next()
@@ -163,7 +164,7 @@ class BaseLexer(object):
     def _emit(self, token_type):
         lexeme = self._input[self._start:self._pos]
         self._start = self._pos
-        self._tokens.append(Token(token_type, lexeme))
+        self._tokens.append(self.tokenclass(token_type, lexeme))
 
     def _ignore(self):
         self._start = self._pos

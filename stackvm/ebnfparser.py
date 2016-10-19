@@ -5,7 +5,9 @@ Created on Mon Oct 17 21:00:40 2016
 @author: Josh
 """
 from string import ascii_lowercase, ascii_uppercase, whitespace
-from tokenizer import Symbol, BaseLexer
+from itertools import groupby
+
+from tokenizer import Symbol, BaseLexer, Token
 
 class TerminalSymbol(Symbol):
     _next_id = 1
@@ -32,17 +34,21 @@ SYMBOL = TerminalSymbol('SYMBOL')
 LITERAL = TerminalSymbol('LITERAL')
 RULE = NonTerminalSymbol('RULE')
 
-class EBNFToken:
-    def __init__(self, symbol, lexeme=None):
-        self.symbol = symbol
-        self.lexeme = lexeme
+class EBNFToken(Token):
 
     def __str__(self):
-        return "<EBNFToken {} ({})>".format(self.symbol, self.lexeme)
+        return "<EBNFToken {} ({})>".format(self.symbol.name, self.lexeme)
+    
+    __repr__ = __str__
 
 class EBNFTokenizer(BaseLexer):
-    def _emit(self, symbol,):
-        BaseLexer._emit(self, symbol)
+    
+    def __init__(self, *args, **kwargs):
+        BaseLexer.__init__(self, *args, **kwargs)
+        self.tokenclass = EBNFToken
+    
+#    def _emit(self, symbol,):
+#        super()._emit(symbol)
 
     def _lex_start(self):
         assert self._start == self._pos
@@ -74,22 +80,22 @@ class EBNFTokenizer(BaseLexer):
             return self._lex_start
 
         elif peek == '|':
-            self._skip()
+            self._accept_run('|')
             self._emit(OR)
             return self._lex_start
 
         elif peek == '*':
-            self._skip()
+            self._accept_run('*')
             self._emit(REP)
             return self._lex_start
 
         elif peek == '?':
-            self._skip()
+            self._accept_run('?')
             self._emit(OPT)
             return self._lex_start
 
         elif peek == '+':
-            self._skip()
+            self._accept_run('+')
             self._emit(ATL)
             return self._lex_start
 
@@ -156,7 +162,13 @@ class ParserNode:
         else:
             flagstr = ""
         return "<ParserNode {} ({})>".format(self.name, flagstr)
+    
+    __repr__ = __str__
 
+def split_by_or(iterable):
+    return [list(g) for k,g in groupby(iterable, lambda x:x.name.symbol == OR) if not k]
+
+            
 def make_parser_node(name, tokens):
     if not tokens:
         return None, []
@@ -211,6 +223,17 @@ def make_parser_node(name, tokens):
 
     return this, tokens
 
+    
+class ASTNode(object):
+    """This node represents the parsed code
+    """
+    def __init__(self, name):
+        self.name = name
+        self.children = []
+
+    def __str__(self):
+        return "<ASTNode.{}>".format(self.name)
+
 class EBNFParser(object):
     """
     Class to read EBNF text and return a dictionary of rules
@@ -229,19 +252,147 @@ class EBNFParser(object):
                 raise SyntaxError("rule %s did not process correctly" % key)
             self.rules[key.strip()] = parser_node
 
+    def match_rule(self, rule, tokens):
+        parser_node = self.rules.get(rule)
+        
+        if parser_node is None:
+            raise SyntaxError("No rule for {}".format(rule))
+        
+        print("matching rule {} for {} tokens with {}".format(rule, len(tokens), parser_node))
+        
+        if isinstance(parser_node.name, EBNFToken):
+            return self.match_terminal(parser_node, tokens)
+        else:
+            return self.match_nonterminal(parser_node, tokens)
+    
+    def match_terminal(self, parser_node, tokens):
+        print("matching terminal with {} for {} tokens".format(parser_node, len(tokens)))
+        if parser_node.symbol == LITERAL:
+            print("matching literal")
+            if parser_node.lexeme == tokens[0].lexeme:
+                return ASTNode(tokens[0]), tokens[1:]
+            else:
+                return None, tokens
+        elif parser_node.lexeme == tokens[0].symbol.name:
+            print("matching symbol")
+            return ASTNode(tokens[0]), tokens[1:]
+        else:
+            return None, tokens
+    
+    def match_nonterminal(self, parser_node, tokens):
+        node = ASTNode(parser_node.name)
+        if parser_node.alternate:
+            child, tokens = self.match_alternate(parser_node.name, split_by_or(parser_node.children), tokens)
+            node.children.extend(child.children)
+        return node, tokens
+        
+    def match_alternate(self, rulename, alternates, tokens):
+        """rulename is the name. Alternates is a list of lists. Tokens a list of tokens"""
+        print(rulename, alternates, tokens)
+        for alternate in alternates:
+            print("trying alternate:", alternate)
+            node, tokens = self.match_sequence(rulename, alternate, tokens)
+            if node is not None:
+                print("..got it!")
+                return node, tokens
+            else:
+                print("..nope")
+        raise SyntaxError
 
-
+    def match_sequence(self, name, expected, tokens):
+        expected = list(expected) # should create a copy
+        #is_or_group =any(t.symbol == OR for t in expected if not isinstance(t, list))
+        print("match sequence:", name, [str(e) for e in expected], tokens[0] )
+        node = ASTNode(name)
+    
+        while expected:
+            print("expecting:", expected[0], tokens[0])
+            #if isinstance(expected[0], list):
+            #    child, tokens = self.match_sequence('junk', expected[0], tokens)
+            #    node.children.extend(child.children)
+    
+            if expected[0].name.symbol != LITERAL and expected[0].name.lexeme != tokens[0].symbol.name:
+                print("rejecting tokens")
+                return None, tokens
+    
+            if expected[0].name.symbol.is_terminal:
+                print("matching terminal symbol?")
+                child, tokens = self.match_terminal(expected[0].name, tokens)
+                if child is not None:
+                    node.children.append(child)
+    
+            else:
+                print("matching non-term?")
+                child, tokens = self.match_rule(expected.name.lexeme, tokens)
+                if child is not None:
+                    node.children.append(child)
+            expected.pop(0)
+        return node, tokens
+    
 def print_node(node, indent=0):
     print(" "*indent, str(node))
     for child in node.children:
         print_node(child, indent+2)
 
 if __name__=='__main__':
-    text = """expr := term ((PLUS | MINUS) term)*;
-            term := factor {(MUL | DIV) factor)};
+    text = """expr := term (("+" | "-") term)*;
+            term := factor {("*" | "/") factor)};
             factor := NUMBER | "(" expr ")";
             """
     p = EBNFParser(text)
-    for key in p.rules:
-        print_node(p.rules[key])
+    
+    print_node(p.rules['factor'])
 
+    # test language - simple math
+    NUMBER = TerminalSymbol("NUMBER")
+    OP = TerminalSymbol("OP")
+    PARENS = TerminalSymbol("PARENS")
+    expr = NonTerminalSymbol('expr')
+    term = NonTerminalSymbol("term")
+    factor = NonTerminalSymbol("factor")
+
+    from string import digits
+
+    ops = "+-/*"
+    parens = "()"
+
+    class MathLexer(BaseLexer):
+        def _lex_start(self):
+            assert self._start == self._pos
+
+            peek = self._peek
+
+            if peek is None:
+                assert self._start == self._pos == self._len
+                return None
+
+            elif peek in whitespace:
+                self._accept_run(whitespace)
+                self._ignore()
+                return self._lex_start
+
+            elif peek in digits:
+                self._accept_run(digits)
+                self._emit(NUMBER)
+                return self._lex_start
+
+            elif peek in ops:
+                self._accept_run(ops)
+                self._emit(OP)
+                return self._lex_start
+
+            elif peek in parens:
+                self._accept_run(parens)
+                self._emit(PARENS)
+                return self._lex_start
+
+
+    test = list(MathLexer("3"))
+    parenstest = list(MathLexer("(3)"))
+    print("testing:", test)
+    node, detritus = p.match_rule('factor', test)
+    print_node(node)
+    print(detritus)
+    
+    print("testing:", parenstest)
+    node, detritus = p.match_rule('factor', parenstest)

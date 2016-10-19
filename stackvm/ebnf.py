@@ -301,11 +301,12 @@ def quick_tree(iterable, res=None):
 def collapse_groups(iterable):
     return quick_tree(iterable)[1]
 
-class EParser(object):
+class EParserNode(object):
     def __init__(self, expectation):
         self.expected = expectation
+        self.children = []
 
-class TerminalParser(EParser):
+class TerminalParser(EParserNode):
     def __call__(self, tokens):
         sym = self.expected.symbol
         lex = self.expected.lexeme
@@ -318,11 +319,23 @@ class TerminalParser(EParser):
             return None, tokens
 
 
-class OrParser(EParser):
+class OrParser(EParserNode):
     # expected is a list of lists of parsers
     def __call__(self, tokens):
         pass
 
+    
+def build_parser(node=None, tokens=None):
+    if tokens is None:
+        return None
+        
+    this = EParserNode(None)
+    first = tokens[0]
+    if first.symbol == STARTGROUP:
+        child = build_parser(tokens[1:])
+        if child:
+            this.children.append(child)
+    return this
 def build_or_parser(ebnftokens):
     return OrParser(split_by_or(ebnftokens))
 
