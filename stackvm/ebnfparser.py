@@ -315,21 +315,27 @@ class EBNFParser(object):
         node = ASTNode(parser_node.token)
         if parser_node.alternate:
             child, tokens = self.match_alternate(parser_node.token, split_by_or(parser_node.children), tokens)
-            node.children.extend(child.children)
+            if child is not None:
+                node.children.extend(child.children)
         elif parser_node.token.symbol == REPEATING:
             logging.debug("Handle repeating elements (0 or more)")
-            go_for_it = True
-            while go_for_it:
-                child, tokens = self.match_sequence(parser_node.token, parser_node.children, tokens)
-                if child is None:
-                    go_for_it = False
-                else:
-                    node.children.extend(child.children)
-        else: # match a sequence
+            
+            child, tokens = self.match_repeating(parser_node.token, parser_node.children, tokens)
+            if child is not None:
+                node.children.extend(child.children)
+        elif parser_node.token.symbol == SEQUENCE: # match a sequence
             child, tokens = self.match_sequence(parser_node.token, parser_node.children, tokens)
             node.children.extend(child.children)
         return node, tokens
 
+    def match_repeating(self, token, expected, tokens):
+        node = ASTNode(token)
+        while True:
+            child, tokens = self.match_sequence(token, expected, tokens)
+            node.children.extend(child.children)
+            if child is None:
+                return node, tokens
+            
     def match_alternate(self, rulename, alternates, tokens):
         """rulename is the name. Alternates is a list of lists. Tokens a list of tokens"""
         logging.debug("match_alternate for %s", rulename)
@@ -341,8 +347,9 @@ class EBNFParser(object):
                 return node, tokens
             else:
                 logging.debug("..nope")
-        logging.exception("match_alternate failed in %s", rulename)
-        raise SyntaxError("match_alternate failed in %s" % rulename)
+        return None, tokens
+        #logging.exception("match_alternate failed in %s", rulename)
+        #raise SyntaxError("match_alternate failed in %s" % rulename)
 
     def match_sequence(self, name, expected, tokens):
         expected = list(expected) # should create a copy
