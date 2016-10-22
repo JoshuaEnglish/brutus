@@ -8,7 +8,8 @@ from string import ascii_lowercase, ascii_uppercase, whitespace
 from itertools import groupby
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO,
+                    format="%(funcName)s:%(levelname)s:%(message)s")
 
 from tokenizer import Symbol, BaseLexer, Token
 
@@ -45,7 +46,7 @@ ATLEASTONCE = NonTerminalSymbol('ATLEASTONCE')
 class EBNFToken(Token):
 
     def __str__(self):
-        return "<EBNFToken {} ({})>".format(self.symbol.name, self.lexeme)
+        return "<EBNFToken {} '{}'>".format(self.symbol.name, self.lexeme)
 
     __repr__ = __str__
 
@@ -180,7 +181,7 @@ class ParserNode(object):
                 flagstr = "sequence"
         else:
             flagstr = ""
-        return "<ParserNode {} ({})>".format(self.token, flagstr)
+        return "<ParserNode {} '{}'>".format(self.token, flagstr)
 
     __repr__ = __str__
 
@@ -260,6 +261,7 @@ def print_ast(ast, indent=0):
     for child in ast.children:
         print_ast(child, indent+2)
 
+
 class EBNFParser(object):
     """
     Class to read EBNF text and return a dictionary of rules
@@ -280,6 +282,8 @@ class EBNFParser(object):
             self.rules[key.strip()] = parser_node
         logging.debug("EBNFParser.__init__() end")
 
+        self._rule_attempts = []
+
     def match_rule(self, rule, tokens):
         parser_node = self.rules.get(rule)
 
@@ -288,6 +292,10 @@ class EBNFParser(object):
             raise SyntaxError("No rule for {}".format(rule))
 
         logging.debug("matching rule %s for %d tokens with %s", rule, len(tokens), parser_node)
+        if (rule, tokens) in self._rule_attempts:
+            logging.error("Tried %s with %s already", rule, tokens)
+            raise SyntaxError
+        self._rule_attempts.append((rule, tokens))
 
         if not isinstance(parser_node.token, EBNFToken):
             raise ValueError("parser node missing required EBNFToken")
@@ -298,17 +306,22 @@ class EBNFParser(object):
             return self.match_nonterminal(parser_node, tokens)
 
     def match_terminal(self, parser_node, tokens):
+
         logging.debug("matching terminal with %s for %d tokens", parser_node, len(tokens))
         if parser_node.token.symbol == LITERAL:
-            logging.debug("matching literal")
+
             if parser_node.token.lexeme == tokens[0].lexeme:
+                logging.debug("matching literal .. matched")
                 return ASTNode(tokens[0]), tokens[1:]
+
             else:
+                logging.debug("matching literal .. nope")
                 return None, tokens
         elif parser_node.token.lexeme == tokens[0].symbol.name:
-            logging.debug("matching symbol")
+            logging.debug("matching symbol %s", parser_node.token.lexeme)
             return ASTNode(tokens[0]), tokens[1:]
         else:
+            logging.debug("did not match terminal %s", parser_node)
             return None, tokens
 
     def match_nonterminal(self, parser_node, tokens):
@@ -319,7 +332,7 @@ class EBNFParser(object):
                 node.children.extend(child.children)
         elif parser_node.token.symbol == REPEATING:
             logging.debug("Handle repeating elements (0 or more)")
-            
+
             child, tokens = self.match_repeating(parser_node.token, parser_node.children, tokens)
             if child is not None:
                 node.children.extend(child.children)
@@ -335,7 +348,8 @@ class EBNFParser(object):
             node.children.extend(child.children)
             if child is None:
                 return node, tokens
-            
+        return None, tokens
+
     def match_alternate(self, rulename, alternates, tokens):
         """rulename is the name. Alternates is a list of lists. Tokens a list of tokens"""
         logging.debug("match_alternate for %s", rulename)
@@ -460,9 +474,9 @@ if __name__=='__main__':
     print_ast(node)
     print(detritus)
 
-    math_test = list(MathLexer("3 + 2"))
-    print("testing:", math_test)
-    logging.root.setLevel(logging.DEBUG)
-    node, detritus = p.match_rule('expr', math_test)
-    print_ast(node)
-    print(detritus)
+#    math_test = list(MathLexer("3 + 2"))
+#    print("testing:", math_test)
+#    logging.root.setLevel(logging.DEBUG)
+#    node, detritus = p.match_rule('expr', math_test)
+#    print_ast(node)
+#    print(detritus)
