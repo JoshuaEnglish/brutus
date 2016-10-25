@@ -211,7 +211,7 @@ def make_parser_node(name, tokens, endtoken = None):
             logging.debug("found %s in %d", first.symbol.name, id(this))
             key = name.split('-')[0]
             groupcount[key] += 1
-            child, tokens = make_parser_node("%s-%d" % (key, groupcount[key]), 
+            child, tokens = make_parser_node("%s-%d" % (key, groupcount[key]),
                                              tokens[1:],
                                              groupings[first.symbol])
             if child:
@@ -275,7 +275,9 @@ def print_ast(ast, ind=0):
     for child in ast.children:
         print_ast(child, ind+2)
 
-        
+def lexemes(tokens):
+    return '"{}"'.format(" ".join(t.lexeme for t in tokens))
+
 def indent(x):
     return ''.join(islice(cycle(" :  "), x))
 
@@ -305,11 +307,11 @@ class EBNFParser(object):
         self._rule_attempts = []
         self._rule_count = 0
         self._calls = Counter()
-        
+
 
     def match_rule(self, rule, tokens, i = 0):
         parser_node = self.rules.get(rule)
-        print(indent(i), "trying rule", parser_node.token.lexeme, [str(e.token) for e in parser_node.children], tokens)
+        print(indent(i), "trying rule", parser_node.token.lexeme, [str(e.token) for e in parser_node.children], lexemes(tokens))
         self._rule_count += 1
         self._calls['match_rule'] += 1
         if self._rule_count > 10:
@@ -365,20 +367,7 @@ class EBNFParser(object):
         if not tokens:
             return None, tokens
         if parser_node.alternate:
-#            alternates = split_by_or(parser_node.chidren)
-#            child = None
-#            for alt in alternates:
-#                if alt[0].token_is_terminal:
-#                    child, extra = self.match_terminal(alt[0], tokens)
-#                    if child is not None:
-#                        break
-#                else:
-#                    child, extra = self.match_nonterminal(alt[0], tokens)
-#                    if child is not None:
-#                        break
-#            if child is not None:
-#                real, tokens = self.match_s
-                
+
             child, tokens = self.match_alternate(parser_node.token, split_by_or(parser_node.children), tokens, i+1)
             if child is not None:
                 node.children.extend(child.children)
@@ -392,7 +381,10 @@ class EBNFParser(object):
             child, tokens = self.match_sequence(parser_node.token, parser_node.children, tokens, i+1)
             if child is not None:
                 node.children.extend(child.children)
-        return node, tokens
+        if node.children:
+            return node, tokens
+        else:
+            return None, tokens
 
     def match_repeating(self, token, expected, tokens, i):
         self._calls['match_repeating'] += 1
@@ -402,14 +394,13 @@ class EBNFParser(object):
         while keep_trying:
             child, tokens = self.match_sequence(token, expected, tokens, i+1)
             if child is not None:
+
                 node.children.extend(child.children)
+                print_ast(node, i)
 
             if child is None:
                 logging.debug("returning node with %d children", len(node.children))
-                if node.children:
-                    return node, tokens
-                else:
-                    return None, tokens
+                return node, tokens
 
         return node, tokens
 
@@ -427,6 +418,7 @@ class EBNFParser(object):
             if node is not None:
                 logging.debug("..got it!")
                 print(indent(i), "matched alternate", alternate)
+                print_ast(node, i)
                 return node, tokens
             else:
                 logging.debug("..nope")
@@ -446,7 +438,7 @@ class EBNFParser(object):
         node = ASTNode(name)
 
         while expected:
-            print(indent(i), "expecting", expected[0])
+            print(indent(i), name, "expecting", expected[0], tokens[0])
             if tokens:
                 logging.debug("expecting: %s got %s", expected[0], tokens[0])
             else:
@@ -454,16 +446,17 @@ class EBNFParser(object):
                 return None, tokens
 
             if expected[0].token.is_terminal:
-                if expected[0].token.symbol != LITERAL and expected[0].token.lexeme != tokens[0].symbol.name:
-                    logging.debug("rejecting tokens")
-                    print(indent(i), "didn't match sequence", original)
-                    return None, tokens
+#                if expected[0].token.symbol != LITERAL and expected[0].token.lexeme != tokens[0].symbol.name:
+#                    logging.debug("rejecting tokens")
+#                    print(indent(i), "didn't match sequence", original)
+#                    return None, tokens
                 logging.debug("matching terminal symbol?")
                 child, tokens = self.match_terminal(expected[0], tokens, i+1)
                 if child is None:
                     return None, tokens
                 else:
                     node.children.append(child)
+                    print_ast(node, i)
 
             else:
                 logging.debug("matching non-term? %s", expected[0].token.lexeme)
@@ -478,12 +471,12 @@ class EBNFParser(object):
                 else:
                     if expected[0].token.symbol == RULE:
                         print(indent(i), "matched rule, appending")
-                        
+
                         node.children.append(child)
                         print_ast(node, i)
                     else:
-                        print(indent(i), "matched non_terminal, extending")
-                        node.children.extend(child.children)
+                        print(indent(i), "matched non_terminal, appending")
+                        node.children.append(child)
                         print_ast(node, i)
             expected.pop(0)
         if node.children:
@@ -496,7 +489,7 @@ def print_node(node, ind=0):
     for child in node.children:
         print_node(child, ind+2)
 
-        
+
 def test(text):
     groupcount['test'] = 0
     node, detritus = make_parser_node('test', list(EBNFTokenizer(text)))
@@ -509,11 +502,11 @@ if __name__ == '__main__':
             """
     logging.root.setLevel(logging.INFO)
     p = EBNFParser(text)
-    
+
     #print_node(p.rules['expr'])
     #print_node(p.rules['term'])
     #print_node(p.rules['factor'])
-    
+
     # test language - simple math
     NUMBER = TerminalSymbol("NUMBER")
     OP = TerminalSymbol("OP")
