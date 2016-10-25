@@ -307,8 +307,16 @@ class EBNFParser(object):
         self._rule_count = 0
         self._calls = Counter()
 
+    def parse(self, tokens):
+        """Parse tokens into an ASTNode tree"""
+        if not self._start_rule:
+            raise ValueError("no start rule established")
+        self.match_rule(self._start_rule, tokens)
 
     def match_rule(self, rule, tokens, i = 0):
+        """Given a rule name nad a list of tokens, return an
+        ASTNode and remaining tokens
+        """
         parser_node = self.rules.get(rule)
         print(indent(i), "trying rule", parser_node.token.lexeme, [str(e.token) for e in parser_node.children], lexemes(tokens))
         self._rule_count += 1
@@ -495,6 +503,18 @@ def test(text):
     node, detritus = make_parser_node('test', list(EBNFTokenizer(text)))
     print_node(node)
     print(detritus)
+
+ def test_repeat():
+    p = EBNFParser("""as := "a" {("b" | "c")};""")
+    print_node(p.rules['as'])
+    logging.root.setLevel(logging.INFO)
+    a = Token(LITERAL, "a")
+    b = Token(LITERAL, "b")
+    c = Token(LITERAL, "c")
+    node, detritus = p.match_rule('as', [a, c, b, c])
+    print_ast(node)
+    print(detritus)
+
 if __name__ == '__main__':
     text = """expr := term {("+" | "-") term};
             term := factor {("*" | "/") factor};
@@ -576,14 +596,5 @@ if __name__ == '__main__':
 #    print_ast(node)
 #    print(detritus)
 
-def test_repeat():
-    p = EBNFParser("""as := "a" {("b" | "c")};""")
-    print_node(p.rules['as'])
-    logging.root.setLevel(logging.INFO)
-    a = Token(LITERAL, "a")
-    b = Token(LITERAL, "b")
-    c = Token(LITERAL, "c")
-    node, detritus = p.match_rule('as', [a, c, b, c])
-    print_ast(node)
-    print(detritus)
+
 
