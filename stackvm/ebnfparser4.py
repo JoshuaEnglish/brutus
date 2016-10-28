@@ -268,7 +268,7 @@ class ParseTreeNode(object):
         self.children = []
 
     def __str__(self):
-        return "<ParseTreeNode:{} {} >".format(self.token.symbol.name, self.token.lexeme)
+        return "<ParseTreeNode:{} {} > ({:x})".format(self.token.symbol.name, self.token.lexeme, id(self))
 
 def print_parsetree(ast, ind=0):
     print("{0}< {1} >".format(indent(ind), ast.token.lexeme))
@@ -301,13 +301,18 @@ class EBNFParser(object):
         data = [line.partition(":=") for line in lines]
         self.rules = {}
         for key, junk, val in data:
+            key = key.strip()
             if self.start_rule is None:
-                self.start_rule = key.strip()
-            parser_node, remaining = make_parser_node(key.strip(), list(EBNFTokenizer(val)))
+                self.start_rule = key
+            if key in self.symbol_table:
+                raise SyntaxError('rule for %s already exists' % key)
+            parser_node, remaining = make_parser_node(key, list(EBNFTokenizer(val)))
             if remaining:
                 logging.exception("rule %s did not process correctly", key)
                 raise SyntaxError("rule %s did not process correctly" % key)
             self.rules[key.strip()] = parser_node
+            self.symbol_table[key] = NonTerminalSymbol(key)
+
         logging.debug("EBNFParser.__init__() end")
 
         self._rule_count = 0
@@ -408,7 +413,8 @@ class EBNFParser(object):
     def match_nonterminal(self, parser_node, tokens, i):
         #self._calls[parser_node.token.symbol.name] += 1
         # print(indent(i),"match_nonterminal '%s' with %d children against %d tokens" % (parser_node.token.lexeme, len(parser_node.children), len(tokens)))
-        node = ParseTreeNode(parser_node.token)
+        symbol = self.symbol_table[parser_node.token.lexeme.split('-')[0]]
+        node = ParseTreeNode(Token(symbol, parser_node.token.lexeme))
         if not tokens:
             return None, tokens
 
