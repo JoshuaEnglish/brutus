@@ -3,10 +3,10 @@ from __future__ import (absolute_import, print_function)
 
 import collections
 
-from .errors import (PopError, UnresolvedTokenError, 
+from errors import (PopError, UnresolvedTokenError, 
                     MissingLabelError, )
 
-from .errors import RuleNameError, FunctionNameError, CallerError
+from errors import RuleNameError, FunctionNameError, CallerError
     
 class VMLibrary:
     """This class allows users to import from predefined libraries.

@@ -7,12 +7,12 @@ import collections
 import logging
 LOG = logging.getLogger('STACKVM')
 
-from .errors import (LibraryError, LibraryImportError,
+from errors import (LibraryError, LibraryImportError,
                     MissingMethod, RunTimeError, RuleNameError,
                     FunctionNameError, CallerError)
-from .stack import Stack
-from .library import VMLibrary, ControlOperationsLibrary
-from .tokenizer import VMLexer
+from stack import Stack
+from library import VMLibrary, ControlOperationsLibrary
+from tokenizer import VMLexer
 
 
 __version__ = "3.0"
