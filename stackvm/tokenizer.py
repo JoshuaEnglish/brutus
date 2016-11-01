@@ -49,7 +49,7 @@ class Symbol(int):
         return id_
 
     def __repr__(self):
-        return "Symbol(%d, '%s')" % (int(self), self._name)
+        return "%s(%d, '%s')" % (self.__class__.__name__, int(self), self._name)
 
 class TerminalSymbol(Symbol):
     _next_id = 1

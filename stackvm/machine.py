@@ -15,7 +15,7 @@ from library import VMLibrary, ControlOperationsLibrary
 from tokenizer import VMLexer
 
 
-__version__ = "3.0"
+__version__ = "4.0"
 
 
 class Namespace(collections.MutableMapping):

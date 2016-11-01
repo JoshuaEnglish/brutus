@@ -21,14 +21,13 @@ Stack VM provides a basic tokenizer to "compile" programs into the VM language. 
 tokenizer could also help build higher level programs.
 
 
-
-
 Contents:
 
 .. toctree::
    :maxdepth: 2
 
    getting_started
+   defining_a_language
 
    machine
 
