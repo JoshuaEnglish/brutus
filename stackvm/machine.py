@@ -91,6 +91,7 @@ class VM(object):
         self._curline = 0
         self._cycles = 0
         self._exports = [] ### Used as a library
+        self.history = [] ### history of the stack
 
     def set_lexer_class(self, lexerclass):
         """Changes the lexer class for this virtual machine"""
@@ -261,6 +262,7 @@ class VM(object):
         self._curline = 0
         self._cycles = 0
         self.stack.clear()
+        self.history = []
         #self.registers.clear()
 
     def run(self, **registers):
@@ -282,6 +284,10 @@ class VM(object):
 
         LOG.debug("%s: %s, %s, %s",self._curline,
                   current_command, self.stack, self.registers)
+        self.history.append((self._cycles, self._curline,
+                                    current_command,
+                                    ["%s" % item for item in self.stack],
+                                    dict(self.registers)))
         self._cycles += 1
 
         if current_command:

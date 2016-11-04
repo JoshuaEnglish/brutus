@@ -175,6 +175,11 @@ class ParserNode(object):
         assert isinstance(thing, ParserNode)
         self.children.append(thing)
 
+    def guess_symbol_class(self):
+        """returns NonTerminalSymbol or EBNFNonTerminalSymbol"""
+        is_term = all(kid.token.symbol in [OR, LITERAL] for kid in self.children)
+        return EBNFTerminalSymbol if is_term else EBNFNonTerminalSymbol
+
     def __str__(self):
         if len(self.children) > 1:
             flags = ["alternate" if self.alternate else "",
@@ -324,8 +329,17 @@ class EBNFParser(object):
 
         self._calls = Counter()
 
+
+    def _child_should_be_terminal(self, child):
+        return child.token.symbol in [OR, LITERAL]
+
+    def _node_should_be_terminal(self, node):
+        return all(self._child_should_be_terminal(kid) for kid in node)
+
     def make_symbol_table(self):
         def extract(parser_node):
+            if parser_node.token.symbol in [OR, STARTGROUP, ENDGROUP]:
+                return None
             if parser_node.token.lexeme not in self.symbol_table:
 
                 if parser_node.token.is_terminal:
@@ -342,7 +356,7 @@ class EBNFParser(object):
         """Parse tokens into an ParseTreeNode tree"""
         if not self.start_rule:
             raise ValueError("no start rule established")
-        self.match_rule(self.start_rule, tokens)
+        return self.match_rule(self.start_rule, tokens)
 
     def match_rule(self, rule, tokens, i=0):
         """Given a rule name and a list of tokens, return an
@@ -569,23 +583,36 @@ def print_xml(node, ind=0):
 
 
 class Coder(object):
-    """code generation tools"""
+    """code generation tool"""
     def __init__(self):
         self.code = []
 
+    def encode(self, node):
+        """return a space deliniated string of items of code.
+        Automatically appends 'END' if needed.
+        """
+        self.handle_node(node)
+        if self.code[-1] not in ['.', 'END', 'end']:
+            self.code.append('END')
+        return " ".join(self.code)
+
     def handle_terminal(self, node):
+        """adds the token's lexeme to the code output"""
         self.code.append(node.token.lexeme)
 
     def encode_terminal(self, node):
+        """adds the token's lexeme to the code output"""
         self.code.append(node.token.lexeme)
 
     def handle_binary_node(self, node):
-        this, op, that = node.children
-        func = getattr(self, "encode_{}".format(this.token.lexeme))
-        func(this)
-        func = getattr(self, "encode_{}".format(that.token.lexeme))
-        func(that)
-        self.code.append(op.token.lexeme)
+        """converts a repeating infix operation to postfix in the code output"""
+        self.handle_node(node.children[0])
+        idx = 1
+        while idx < len(node.children):
+            self.handle_node(node.children[idx+1])
+            self.handle_node(node.children[idx])
+            idx += 2
+
 
     def handle_node(self, node):
         func_name = "encode_{}".format(node.token.lexeme)
@@ -594,6 +621,17 @@ class Coder(object):
             getattr(self, func_name)(node)
         elif hasattr(self, symbol_name):
             getattr(self, symbol_name)(node)
+        else:
+            raise SyntaxError("Coder cannot handle %s" % node)
+
+    def handle_children(self, node):
+        """encodes children, ignoring the parent node"""
+        for child in node.children:
+            self.handle_node(child)
+
+    def do_nothing(self, node):
+        """ignores the node in code generation"""
+        pass
 
 if __name__ == '__main__':
     text = """
@@ -602,6 +640,10 @@ if __name__ == '__main__':
             expr := term {("+" | "-") term};
             term := factor {("*" | "/") factor};
             factor := NUMBER | VAR | "(" expr ")";
+            var := "a" | "b" | "c";
+            number := digit {digit};
+            digit := "0" | "1" | "2" | "3" | "4" |
+                     "5" | "6" | "7" | "8" | "9" ;
             """
 
     logging.root.setLevel(logging.INFO)
@@ -687,67 +729,41 @@ if __name__ == '__main__':
 
 
     logging.root.setLevel(logging.INFO)
-    parenstest = list(MathLexer("a <- 2*7+3*2 . \n\tb<-a/2. "))
+    parenstest = list(MathLexer("a <- 12*7+3*2 . \n\tb<-a/2. res <- b * d ."))
     print("testing:", lexemes(parenstest))
     p.collapse_tree = False
-    node, detritus = p.match_rule('statements', parenstest)
+
+    node, detritus = p.parse(parenstest)
     INDENT_STRING = " "
-    #print_parsetree(node)
-    #print(detritus)
+    print_parsetree(node)
+    print(detritus)
 
     class MathCoder(Coder):
-        def encode_number(self, node):
-            self.encode_terminal(node)
-
-        def encode_op(self, node):
-            self.handle_terminal(node)
-
-        def encode_parens(self, node):
-            pass
-
-        def encode_expr(self, node):
-            self.handle_node(node.children[0])
-            idx = 1
-            while idx < len(node.children):
-                self.handle_node(node.children[idx+1])
-                self.handle_node(node.children[idx])
-                idx += 2
-
-
-        def encode_term(self, node):
-            self.handle_node(node.children[0])
-            idx = 1
-            while idx < len(node.children):
-                self.handle_node(node.children[idx+1])
-                self.handle_node(node.children[idx])
-                idx += 2
-
-        def encode_var(self, node):
-            self.handle_terminal(node)
-
-        def encode_factor(self, node):
-            for child in node.children:
-                self.handle_node(child)
+        encode_number = Coder.encode_terminal
+        encode_op = Coder.handle_terminal
+        encode_parens =Coder.do_nothing
+        encode_var = Coder.handle_terminal
+        encode_factor = Coder.handle_children
+        encode_statements = Coder.handle_children
+        encode_expr = Coder.handle_binary_node
+        encode_term = Coder.handle_binary_node
 
         def encode_assignment(self, node):
-            print("assignment", node, token_lexemes(node.children))
+            #print("assignment", node, token_lexemes(node.children))
             variable, op, stuff, stop = node.children
             self.handle_node(stuff)
             self.code.append("{}'".format(variable.token.lexeme))
 
-        def encode_statements(self, node):
-            for child in node.children:
-                self.encode_assignment(child)
 
 
     coder = MathCoder()
-    coder.handle_node(node)
-    print(coder.code)
+    code = coder.encode(node)
+    print("Code:", code)
 
     from machine import BaseMachine
     mather = BaseMachine('math')
-    mather.feed("{} .".format(' '.join(coder.code)))
-    mather.run()
+    mather.feed(code)
+    mather.run(d=1)
     print(mather.registers)
 
 
