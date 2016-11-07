@@ -379,8 +379,8 @@ class EBNFParser(object):
 
         node, tokens = self.match(parser_node, tokens, i)
         if i == 0 and tokens:
-            logging.error("Not all input consumeb")
-            raise ValueError("not all input consumed")
+            logging.error("Not all input consumed")
+            raise ValueError("not all input consumed %s" % tokens)
         return node, tokens
 
     def match(self, parser_node, tokens, i):
@@ -640,7 +640,7 @@ if __name__ == '__main__':
             expr := term {("+" | "-") term};
             term := factor {("*" | "/") factor};
             factor := NUMBER | VAR | "(" expr ")";
-            var := "a" | "b" | "c";
+            var := "a" | "b" | "c" | "d" ;
             number := digit {digit};
             digit := "0" | "1" | "2" | "3" | "4" |
                      "5" | "6" | "7" | "8" | "9" ;
@@ -654,23 +654,23 @@ if __name__ == '__main__':
     #print_node(p.rules['factor'])
 
     # test language - simple math
-    class MathTerminalSymbol(Symbol):
+    class MTerminalSymbol(Symbol):
         _next_id = 1
         is_terminal = True
 
-    class MathNonTerminalSymbol(Symbol):
+    class MNonTerminalSymbol(Symbol):
         _next_id = 100
         is_terminal = False
 
-    NUMBER = MathTerminalSymbol("NUMBER")
-    OP = MathTerminalSymbol("OP")
-    PARENS = MathTerminalSymbol("PARENS")
-    STORE = MathTerminalSymbol("STORE")
-    VAR = MathTerminalSymbol("VAR")
-    STOP = MathTerminalSymbol("STOP")
-    #expr = MathTerminalSymbol('expr')
-    #term = MathNonTerminalSymbol("term")
-    #factor = MathNonTerminalSymbol("factor")
+    NUMBER = MTerminalSymbol("NUMBER")
+    OP = MTerminalSymbol("OP")
+    PARENS = MTerminalSymbol("PARENS")
+    STORE = MTerminalSymbol("STORE")
+    VAR = MTerminalSymbol("VAR")
+    STOP = MTerminalSymbol("STOP")
+    #expr = MTerminalSymbol('expr')
+    #term = MNonTerminalSymbol("term")
+    #factor = MNonTerminalSymbol("factor")
 
     from string import digits, ascii_lowercase
 
