@@ -1,6 +1,6 @@
 """lexer and tokenizer for StackVM
 """
-from __future__ import (absolute_import, print_function)
+from __future__ import print_function
 
 from string import (whitespace as WHITESPACE,
     digits as DIGITS,

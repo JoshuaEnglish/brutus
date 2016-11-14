@@ -2,11 +2,11 @@
 from __future__ import (absolute_import, print_function)
 
 import collections
+import operator as OP
 
-from errors import (PopError, UnresolvedTokenError, 
-                    MissingLabelError, )
-
-from errors import RuleNameError, FunctionNameError, CallerError
+from .errors import (PopError, UnresolvedTokenError, 
+                    MissingLabelError, RuleNameError, 
+                    FunctionNameError, CallerError)
     
 class VMLibrary:
     """This class allows users to import from predefined libraries.
@@ -21,7 +21,7 @@ class VMLibrary:
         self.exports = []
     
     def __repr__(self):
-        return "<StackLanguageLibrary '%s' version %0.1f>" % (self.Name,self.Version)
+        return "<VMLibrary '%s' version %0.1f>" % (self.Name,self.Version)
         
     def add_export(self, matches, func, caller=None):
         """add_export(list, string, [string])
@@ -75,7 +75,7 @@ class VMLibrary:
             if func not in res: res.append(func)
         return res
         
-import operator as OP
+
 
 class FiveFunctionLibrary(VMLibrary):
     """FiveFunctionLibrary

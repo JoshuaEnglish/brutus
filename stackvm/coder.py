@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun Nov  6 00:06:41 2016
+Coder
 
-@author: Josh
+Translates :class:`CSTNodes` to code for the stack machine
 """
 
 class Coder(object):
@@ -38,6 +38,9 @@ class Coder(object):
 
 
     def handle_node(self, node):
+        """determines which encode_xxx function to call based on the CSTNode's
+        token or symbol name.
+        """
         func_name = "encode_{}".format(node.token.lexeme)
         symbol_name = "encode_{}".format(node.token.symbol.name.lower())
         if hasattr(self, func_name):
