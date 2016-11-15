@@ -12,7 +12,7 @@ import logging
 from collections import namedtuple, OrderedDict, Counter
 from itertools import groupby
 
-from utils import indent, print_xml
+from .utils import indent, print_xml
 
 
 class Symbol(object):

@@ -4,9 +4,7 @@
 Simple Last-In-First-Out stack.
 """
 
-from __future__ import print_function
 
-from errors import PopError
 
 class Stack:
     """Stack(items)
@@ -33,11 +31,11 @@ class Stack:
 
     def pop(self):
         """stack.pop()
-        Removes the top of the stack and returns that value. Raises PopError if
+        Removes the top of the stack and returns that value. Raises IndexError if
         the stack is empty
         """
         if self.is_empty:
-            raise PopError("Cannot pop from empty stack")
+            raise IndexError("Cannot pop from empty stack")
         else:
             return self.items.pop()
 

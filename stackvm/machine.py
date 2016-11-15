@@ -6,9 +6,9 @@ from __future__ import print_function
 import collections
 import logging
 
-from stack import Stack
-from library import VMLibrary, ControlOperationsLibrary
-from tokenizer import VMLexer
+from .stack import Stack
+from .library import VMLibrary, ControlOperationsLibrary
+from .tokenizer import VMLexer
 
 
 __version__ = "4.0"

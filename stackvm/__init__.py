@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # encoding: utf-8
 
 """
@@ -8,6 +9,6 @@ Stack-based abstract virtual machine
 
 __version__ = '4.0.1'
 
-from machine import VM, BaseMachine
-from ebnf import EBNFParser as Parser
-from coder import Coder
+from .machine import VM, BaseMachine
+from .ebnf import EBNFParser as Parser
+from .coder import Coder
