@@ -24,7 +24,7 @@ VMTokenizer.add_lexer(r"[a-zA-Z_]+'", 'STORAGE')
 VMTokenizer.add_lexer(r'#.+$', 'COMMENT')
 VMTokenizer.add_lexer(r'[a-zA-Z_]+', 'NAME')
 VMTokenizer.add_lexer(r'\.', 'STOP')
-VMTokenizer.add_lexer(r'[\d.]+', 'NUMBER')
+VMTokenizer.add_lexer(r'-?[\d.]+', 'NUMBER')
 
 VMTokenizer.add_lexer(r'\S+', 'SYMBOL')
     

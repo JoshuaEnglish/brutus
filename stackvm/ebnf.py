@@ -16,19 +16,19 @@ from .tokenizer import Symbol, Token, Tokenizer, QTerminal
 from .utils import indent, print_xml
 
 
-   
+
 class EBNFTerminalSymbol(Symbol):
     """Terminal Symbol for EBNFTokens"""
     is_terminal = True
 
-    
+
 class EBNFNonTerminalSymbol(Symbol):
     """Non-terminal symbol for EBNFTokens"""
     is_terminal = False
 
-    
+
 EBNFTokenizer = Tokenizer('')
-EBNFTokenizer.add_lexer('\s+', None)
+EBNFTokenizer.add_lexer(r'\s+', None)
 EBNFTokenizer.add_lexer('[a-z]+', 'RULE')
 EBNFTokenizer.add_lexer('[A-Z]+', 'TERM')
 
@@ -80,6 +80,7 @@ class EBNFNode(object):
         self.oneormore = False
 
     def add(self, thing):
+        """add a node to this nodes children"""
         assert isinstance(thing, EBNFNode)
         self.children.append(thing)
 
@@ -183,15 +184,16 @@ class CSTNode(object):
         self.children = []
 
     def __str__(self):
-        return "<CSTNode:{} {} >".format(self.token,
-                                               self.token)
+        return "<CSTNode:{} >".format(self.token)
 
-def print_parsetree(treenode, ind=0):
+def print_cstnode(treenode, ind=0):
+    """prints a CSTNode"""
     print("{0}< {1} >".format(indent(ind), treenode.token.lexeme))
     for child in treenode.children:
-        print_parsetree(child, ind+2)
+        print_cstnode(child, ind+2)
 
 def lexemes(tokens):
+    """linear string of token lexemes"""
     return '"{}"'.format(" ".join(t.lexeme for t in tokens))
 
 def token_lexemes(tokens):
@@ -222,7 +224,7 @@ class EBNFParser(object):
         data = [line.split(":=") for line in lines]
         self.rules = OrderedDict()
         self.tokenizer = Tokenizer('', self.token_class)
-        self.tokenizer.add_lexer('\s+', None)
+        self.tokenizer.add_lexer(r'\s+', None)
         self.tokenizer.add_lexer(r'"[^"]+"', 'LITERAL')
         for key, val in data:
             key = key.strip()
@@ -401,7 +403,7 @@ class EBNFParser(object):
             # print(indent(i),"from match_sequence:", addends, tokens)
             if addends:
                 node.children.extend(addends)
-                #print_parsetree(node, i)
+                #print_cstnode(node, i)
 
             else:
                 keep_trying = False
@@ -435,7 +437,7 @@ class EBNFParser(object):
                 logging.debug("..got it!")
                 # print(indent(i), "matched alternate", token_lexemes(alternate))
                 node.children.extend(found)
-                #print_parsetree(node, i+1)
+                #print_cstnode(node, i+1)
                 return node, tokens
             else:
                 # print(indent(i), "did not match alternate", token_lexemes(alternate))
@@ -474,61 +476,3 @@ class EBNFParser(object):
 
          #print(indent(i),"Out of expectations. Node has", len(found), "child%s" % ("" if len(found)==1 else "ren"))
         return found, tokens
-
-
-
-if __name__ == '__main__':
-
-    from coder import Coder
-    text = """statements := assignment { assignment } ;
-            assignment := VAR STORE expr STOP;
-            expr := term {(PLUS | MINUS) term};
-            term := factor {(MUL | DIV) factor};
-            factor := INTEGER | VAR | OP expr CP;
-            VAR := [a-z]+;
-            INTEGER := [0-9]+;
-            STORE := <-;
-            PLUS := [+];
-            MINUS := [\-];
-            MUL := [*];
-            DIV := [/];
-            STOP := [\.];
-            OP := [(];
-            CP := [)];
-            """
-
-    p = EBNFParser(text)
-    program = "a <- 2*7+3*2 . \nb<-a/2."
-    print(list(p.tokenizer(program)))
-    node, detritus = p.parse_text(program)
-    print_xml(node)
-    print(detritus)
-
-    class MathCoder(Coder):
-        encode_integer = Coder.encode_terminal
-        encode_op = Coder.handle_terminal
-
-        encode_mul = encode_div = encode_plus = encode_minus = Coder.handle_terminal
-        encode_parens = Coder.do_nothing
-        encode_op = encode_cp = Coder.do_nothing
-        encode_var = Coder.handle_terminal
-        encode_factor = Coder.handle_children
-        encode_statements = Coder.handle_children
-        encode_expr = Coder.handle_binary_node
-        encode_term = Coder.handle_binary_node
-
-        def encode_assignment(self, node):
-            #print("assignment", node, token_lexemes(node.children))
-            variable, op, stuff, stop = node.children
-            self.handle_node(stuff)
-            self.code.append("{}'".format(variable.token.lexeme))
-
-    coder = MathCoder()
-    code = coder.encode(node)
-    print("Code:", code)
-
-    from machine import BaseMachine
-    mather = BaseMachine('math')
-    mather.feed(code)
-    mather.run()
-    print(mather.registers)

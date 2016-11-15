@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun Nov 13 15:05:00 2016
+Sample multi-line 4-function calculator.
 
-@author: Josh
+Results from previous lines can be used in later lines.
 """
 from stackvm import Parser, Coder, BaseMachine
 from stackvm.utils import print_xml
@@ -13,7 +13,7 @@ text = """statements := assignment { assignment } ;
         term := factor {(MUL | DIV) factor};
         factor := INTEGER | VAR | OP expr CP;
         VAR := [a-z]+;
-        INTEGER := [0-9]+;
+        INTEGER := -?[0-9]+;
         STORE := <-;
         PLUS := [+];
         MINUS := [\-];
@@ -25,7 +25,8 @@ text = """statements := assignment { assignment } ;
         """
 
 p = Parser(text)
-program = "a <- 2*7+3*2 . \nb<-a/2."
+program = """a <- 2*7+3*4 . 
+b<-a/2."""
 print(list(p.tokenizer(program)))
 node, detritus = p.parse_text(program)
 print_xml(node)

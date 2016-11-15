@@ -152,7 +152,7 @@ if __name__ == '__main__':
     VMTokenizer.add_lexer(r'#.+$', 'COMMENT')
     VMTokenizer.add_lexer(r'[a-zA-Z_]+', 'NAME')
     VMTokenizer.add_lexer(r'\.', 'STOP')
-    VMTokenizer.add_lexer(r'[\d.]+', 'NUMBER')
+    VMTokenizer.add_lexer(r'-?[\d.]+', 'NUMBER')
     
     VMTokenizer.add_lexer(r'\S+', 'SYMBOL')
     
@@ -171,3 +171,4 @@ if __name__ == '__main__':
     print(list(VMTokenizer(''' # start comment \n mylife do_run''')))
     print(list(VMTokenizer('99 luftballoons')))
     print(list(VMTokenizer('4 label: item')))
+    print(list(VMTokenizer('-9 to go')))
