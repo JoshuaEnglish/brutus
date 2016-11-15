@@ -4,9 +4,9 @@
 Simple Last-In-First-Out stack.
 """
 
-from __future__ import (absolute_import, print_function)
+from __future__ import print_function
 
-from .errors import PopError
+from errors import PopError
 
 class Stack:
     """Stack(items)

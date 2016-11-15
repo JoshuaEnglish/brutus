@@ -1,22 +1,19 @@
 """vm.py
 The Virtual Machine
 """
-from __future__ import (absolute_import, print_function)
+from __future__ import print_function
 
 import collections
 import logging
-LOG = logging.getLogger('STACKVM')
 
-from .errors import (LibraryError, LibraryImportError,
-                    MissingMethod, RunTimeError, RuleNameError,
-                    FunctionNameError, CallerError)
-from .stack import Stack
-from .library import VMLibrary, ControlOperationsLibrary
-from .tokenizer import VMLexer
+from stack import Stack
+from library import VMLibrary, ControlOperationsLibrary
+from tokenizer import VMLexer
 
 
 __version__ = "4.0"
 
+LOG = logging.getLogger('STACKVM')
 
 class Namespace(collections.MutableMapping):
     """Namespace()
@@ -109,31 +106,31 @@ class VM(object):
         LOG.debug("Adding rules for: %s", matches)
         ### Make sure matches are valid
         if not isinstance(matches, (list, tuple)):
-            raise RuleNameError("Matches must be list or tuple")
+            raise ValueError("Matches must be list or tuple")
 
         if not all([isinstance(x, str) for x in matches]):
-            raise RuleNameError("Non-String in matches list")
+            raise ValueError("Non-String in matches list")
 
         for match in matches:
             if match.upper() in self.reservedwords:
-                raise RuleNameError("Reserved Word %s reused" % (match))
+                raise ValueError("Reserved Word %s reused" % (match))
             if match.split()[0] != match:
-                raise RuleNameError("Match %s cannot contain spaces" % (match))
+                raise ValueError("Match %s cannot contain spaces" % (match))
 
         matches = [s.upper() for s in matches]
 
         ### Make sure func is valid
         if not isinstance(func, str):
-            raise FunctionNameError("Cannot convert function name to string")
+            raise ValueError("Cannot convert function name to string")
         func = func.strip()
         if not func:
-            raise FunctionNameError("Function must contain alphanumeric characters")
+            raise ValueError("Function must contain alphanumeric characters")
         if func.split()[0] != func:
-            raise FunctionNameError("Function cannot contain white space")
+            raise ValueError("Function cannot contain white space")
 
         ### Make sure that caller is valid (if there)
         if caller and not isinstance(caller, collections.Callable):
-            raise CallerError('Caller must be string or callable')
+            raise ValueError('Caller must be string or callable')
         ### Add the matches to
         self.reservedwords.extend(matches)
         self.rules.append((matches, func, caller))
@@ -196,7 +193,7 @@ class VM(object):
     def import_library(self, library):
         """Imports the rules and functions of a Library"""
         if not issubclass(library, VMLibrary):
-            raise LibraryError("Cannot import %s" % library)
+            raise RuntimeError("Cannot import %s" % library)
 
         lib = library()
         newmethods = lib.methods()
@@ -205,10 +202,10 @@ class VM(object):
             try:
                 handler = getattr(lib, func)
             except:
-                raise LibraryError("Library missing %s method" % (func))
+                raise RuntimeError("Library missing %s method" % (func))
 
             if (func in self.imported_methods) and func not in newmethods:
-                raise LibraryImportError("Language already has %s method" % (func))
+                raise RuntimeError("Language already has %s method" % (func))
 
             self.imported_methods[func] = handler
             self.add_rule(match, func, caller)
@@ -280,14 +277,14 @@ class VM(object):
         try:
             current_command = self._program[self._curline]
         except IndexError:
-            raise RunTimeError("No instruction %d" % self._curline)
+            raise RuntimeError("No instruction %d" % self._curline)
 
-        LOG.debug("%s: %s, %s, %s",self._curline,
+        LOG.debug("%s: %s, %s, %s", self._curline,
                   current_command, self.stack, self.registers)
         self.history.append((self._cycles, self._curline,
-                                    current_command,
-                                    ["%s" % item for item in self.stack],
-                                    dict(self.registers)))
+                             current_command,
+                             ["%s" % item for item in self.stack],
+                             dict(self.registers)))
         self._cycles += 1
 
         if current_command:
@@ -304,7 +301,7 @@ class VM(object):
                             proc = self.imported_methods[func]
                             passself = 1
                         except:
-                            raise MissingMethod("Missing %s Method" % func)
+                            raise ValueError("Missing %s Method" % func)
                     handler = proc
                     break
 

@@ -5,7 +5,7 @@ from setuptools import setup
 
 setup(
     name = 'stackvm',
-    version = '3.0.1',
+    version = '4.0.0',
     description = 'A simple abstract virtual machine',
     long_description = """""",
 

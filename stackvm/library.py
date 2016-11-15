@@ -1,12 +1,8 @@
 
-from __future__ import (absolute_import, print_function)
 
 import collections
 import operator as OP
 
-from .errors import (PopError, UnresolvedTokenError, 
-                    MissingLabelError, RuleNameError, 
-                    FunctionNameError, CallerError)
     
 class VMLibrary:
     """This class allows users to import from predefined libraries.
@@ -33,36 +29,36 @@ class VMLibrary:
         """
         
         if not isinstance(matches, (list, tuple)):
-            raise RuleNameError("Matches must be list or tuple")
+            raise ValueError("Matches must be list or tuple")
             
         if not all(isinstance(x, str) for x in matches):
-            raise RuleNameError("Non-String in matches list")
+            raise ValueError("Non-String in matches list")
         
         for match in matches:
             if match.upper() in self.reserved_words:
-                raise RuleNameError("Reserved Word %s reused" % (match))
+                raise ValueError("Reserved Word %s reused" % (match))
             if match.split()[0] != match:
-                raise RuleNameError("Match %s cannot contain spaces" % (match))
+                raise ValueError("Match %s cannot contain spaces" % (match))
                 
         matches = [m.upper() for m in matches]
         
         ### Make sure func is valid
         if not isinstance(func, str):
-            raise FunctionNameError("Cannot convert function name to string")
+            raise ValueError("Cannot convert function name to string")
         func = func.strip()
         if not func: 
-            raise FunctionNameError("Function must contain alphanumeric characters")
+            raise ValueError("Function must contain alphanumeric characters")
         if func.split()[0] != func:
-            raise FunctionNameError("Function cannot contain white space")
+            raise ValueError("Function cannot contain white space")
         
         ### Make sure that caller is valid (if there)
         if caller: 
             if not isinstance(caller, (str,collections.Callable)):
-                raise CallerError("Caller must be a string or callable")
+                raise ValueError("Caller must be a string or callable")
             if isinstance(caller, str):
                 caller = caller.strip()
                 if caller.split()[0] != caller:
-                    raise CallerError("Caller cannot contain whitespace")
+                    raise ValueError("Caller cannot contain whitespace")
             
         ### Add the matches to 
         self.reserved_words.extend(matches)
@@ -140,16 +136,16 @@ class ComparisonsLibrary(VMLibrary):
     def do_cmp_op(self, op, parent):
         try:
             a, b = parent.stack.pop(), parent.stack.pop()
-        except PopError:
-            raise PopError("Cannot pop two items for %s operator" % op)
+        except IndexError:
+            raise IndexError("Cannot pop two items for %s operator" % op)
         try:
             a = int(a)
         except:
-            raise UnresolvedTokenError("%s not valid input for %s" % (a, op))
+            raise ValueError("%s not valid input for %s" % (a, op))
         try:
             b = int(b)
         except:
-            raise UnresolvedTokenError("%s not valid input for %s" % (b, op))
+            raise ValueError("%s not valid input for %s" % (b, op))
 
         opstring = '%s %s %s' % (b, op, a)
 
@@ -176,17 +172,16 @@ class ControlOperationsLibrary(VMLibrary):
     def do_if_control(self, caller, parent):
         line, value = parent.stack.pop(), parent.stack.pop()
         if isinstance(line, str) and not line.isdigit():
-            raise MissingLabelError("Possibly missing label: %s" % line)
+            raise ValueError("Possibly missing label: %s" % line)
         if value:
             parent.go_to_instruction(int(line))
 
     def do_ife_control(self, caller, parent):
         line1, line2, value = parent.stack.pop(), parent.stack.pop(), parent.stack.pop()
         if not line1.isdigit():
-            raise MissingLabelError("Possibly missing label: %s" % line1)
+            raise ValueError("Possibly missing label: %s" % line1)
         if not line2.isdigit():
-            raise MissingLabelError("Possibly missing label: %s" % line2)
-##        print "if (%s) goto %s else %s" % (value, line1, line2)
+            raise ValueError("Possibly missing label: %s" % line2)
         if value:
             parent.go_to_instruction(int(line1))
         else:
@@ -195,5 +190,5 @@ class ControlOperationsLibrary(VMLibrary):
     def do_jump_control(self, caller, parent):
         line = parent.stack.pop()
         if not line.isdigit():
-            raise MissingLabelError("Possible missing label: %s" % line)
+            raise ValueError("Possible missing label: %s" % line)
         parent.go_to_instruction(int(line))
