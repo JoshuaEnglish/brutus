@@ -1,1 +1,2 @@
 2016.09.28 -- Removed "if self.debug: print ..." and replaced with proper logging
+2016.11.14 -- lots of changes. Using regular expressions for tokenization

@@ -1,314 +1,173 @@
 """lexer and tokenizer for StackVM
 """
-from __future__ import print_function
 
-from string import (whitespace as WHITESPACE,
-    digits as DIGITS,
-    ascii_letters as LETTERS)
+import re
 
-IDENTIFIER_START = LETTERS + '_'
-IDENTIFIER = IDENTIFIER_START + DIGITS + "':"
+from collections import namedtuple
 
-COMMENT_START = '#'
-
-DIGITS += '-+'
-
-EOL = '\n\r'
-
-class Symbol(int):
+class Symbol(object):
+    """Symbol(name)
+    Base class for Terminal and NonTerminal Symbols
     """
-    Integer value with name for ease of identification
-    """
-
-    _next_id = 1
-
-    def __new__(cls, name, id_=None):
-        symbol_id = id_ if id_ is not None else cls.next_id()
-        self = super(Symbol, cls).__new__(cls, symbol_id)
+    is_terminal = None
+    def __init__(self, name):
         self._name = name
-        return self
-
-    def __str__(self):
-        return '%s (%d)' % (self._name, int(self))
 
     @property
     def name(self):
-        """
-        The string name of this symbol, as spelled in the grammar, suitable
-        for use in the user interface.
-        """
+        "The symbol name"
         return self._name
 
-    @classmethod
-    def next_id(cls):
-        """
-        Return the next available symbol identifier for this symbol type.
-        """
-        id_ = cls._next_id
-        cls._next_id += 1
-        return id_
+    def __str__(self):
+        return "[%s %s]" % (self.__class__.__name__, self.name)
 
-    def __repr__(self):
-        return "%s(%d, '%s')" % (self.__class__.__name__, int(self), self._name)
+    __repr__ = __str__
 
-class TerminalSymbol(Symbol):
-    _next_id = 1
+class QTerminal(Symbol):
+    """Terminal symbol for tokenizers created by :class:`EBNFParser`."""
     is_terminal = True
 
-class NonterminalSymbol(Symbol):
-    _next_id = 1000
+    
+class QNonTerminal(Symbol):
+    """Non-terminal symbol for tokenizers created by :class:`EBNFParser`."""
     is_terminal = False
 
-
-SNTL = Symbol('SNTL', 0)
-
-NAME = Symbol('NAME')
-
-TEXT = Symbol('TEXT')
-
-OPERATOR = Symbol('OPERATOR')
-STORAGE = Symbol('STORAGE')
-REGISTER = Symbol('REGISTER')
-
-NUMBER = Symbol('NUMBER')
-
-LABEL = Symbol('LABEL')
-KEYWORD = Symbol('KEYWORD')
-
+    
 class Token(object):
+    """Token(symbol, lexeme)
+    Container for text (the lexeme) with a symbol defining the role of
+    the text.
     """
-    A token, classified by a terminal symbol (token class) and containing
-    a lexeme of that class.
-    """
-
     __slots__ = ('_symbol', '_lexeme')
 
     def __init__(self, symbol, lexeme):
         self._symbol = symbol  # always a terminal symbol
         self._lexeme = lexeme
 
-    def __repr__(self):
-        """
-        Like 'Token(COMMA, ",")'.
-        """
-        return 'Token(%s, "%s")' % (self._symbol.name, self._lexeme)
-
     @property
     def symbol(self):
-        """
-        The terminal symbol this token is an instance of.
-        """
+        """The associated symbol for this token"""
         return self._symbol
+
+    @symbol.setter
+    def symbol(self, newsymbol):
+        if not isinstance(newsymbol, Symbol):
+            raise ValueError("cannot update EBNFToken symbol to non Symbol")
+        self._symbol = newsymbol
 
     @property
     def lexeme(self):
-        """
-        String value (lexeme) of this token.
-        """
         return self._lexeme
+
+    value = lexeme
 
     @property
-    def value(self):
-        """
-        The string value (lexeme) of this token. Useful generic alternative
-        when walking an AST in which this token is a node. Both ASTNode and
-        Token objects have a value property.
-        """
-        return self._lexeme
+    def is_terminal(self):
+        """Returns True if the associated symbol is terminal"""
+        return self._symbol.is_terminal
 
-class BaseLexer(object):
-    def __init__(self, input, start_state='_lex_start', emit_sntl=True):
-        self._input = input
-        self._start = 0
-        self._pos = 0
-        self._start_state = getattr(self, start_state)
-        self._emit_sntl = emit_sntl
-        self._tokens = []
-        self.state = None
-        self.tokenclass = Token
+
+    def __str__(self):
+        return "<%s %s: %s >" % (self.symbol.name, self.__class__.__name__, self.lexeme)
+
+    __repr__ = __str__
+
+Lexer = namedtuple('Lexer', 'pattern symbol')
+
+
+class Tokenizer(object):
+    """Tokenizer(text [,token_class])
+    Converts text into tokens, based on individual lexers
+    """
+    def __init__(self, text, token_class=None):
+        self.text = text
+        self._t_class = token_class or Token
+        self.lexers = []
+        self._compiled_lexers = {}
+        self.symbols = {}
+
+    def __call__(self, text):
+        self.text = text
+        return self
 
     def __iter__(self):
-        self._start = self._pos = 0
-        self.state = self._start_state
-        return iter(self._next_token, None)
 
-    def _next_token(self):
-        if self._token_in_queue:
-            return self._pop_token()
+        return iter(self.get_next_token, None)
 
-        while self.state is not None:
-            self.state = self.state()
-            if self._token_in_queue:
-                return self._pop_token()
+    def add_lexer(self, pattern, symbol_name):
+        """add_lexer(patter, symbol_name)
+        Adds a regular expression pattern to an internal list for creating
+        tokens. If ``symbol_name`` is None, the tokenizer will not emit
+        a token when the pattern matches. Otherwise, a :class:`Token` object
+        with :class:`QTerminal` symbol will be created for the text that
+        matched the pattern.
+        """
+        if pattern is self._compiled_lexers:
+            raise ValueError("lexer for %s already exists" % pattern)
 
-        if self._start != self._pos or self._pos < self._len:
-            raise ValueError('not all input consumed')
+        if symbol_name is None:
+            self.lexers.append(Lexer(pattern, None))
+        else:
+            self.lexers.append(Lexer(pattern,
+                                     self.get_symbol(symbol_name)))
 
-    def _accept_run(self, charset):
-        while True:
-            c = self._next()
-            if c is None or c not in charset:
-                self._backup()
-                break
-            
-    def _accept_until(self, charset):
-        while True:
-            c = self._next()
-            if c is None or c in charset:
-                self._backup()
-                break
 
-    def _backup(self):
-        self._pos -= 1
-
-    def _emit(self, token_type):
-        lexeme = self._input[self._start:self._pos]
-        self._start = self._pos
-        self._tokens.append(self.tokenclass(token_type, lexeme))
-
-    def _ignore(self):
-        self._start = self._pos
-
-    @property
-    def _len(self):
-        return len(self._input)
-
-    def _lex_start(self):
-        raise NotImplementedError
-
-    @property
-    def _llen(self):
-        return self._pos - self._start
-
-    def _next(self):
-        next_char = self._input[self._pos] if self._pos < self._len else None
-        self._pos += 1
-        return next_char
-
-    @property
-    def _peek(self):
-        if self._pos >= len(self._input):
+    def get_next_token(self):
+        """get_next_token()
+        Scans the for a token at the beginning of the text.
+        Creating the token removes the token's text from the source text.
+        Return None if there is no more input.
+        """
+        if not self.text:
             return None
-        return self._input[self._pos]
 
-    def _pop_token(self):
-        return self._tokens.pop(0)
+        for lexer in self.lexers:
 
-    def _skip(self, n=1):
-        if self._start != self._pos:
-            raise ValueError('cannot skip, partial lexeme')
-        if self._start +n > len(self._input):
-            raise ValueError('cannot skip past EOF')
-        self._start = self._pos = self._start + n
+            matcher = self.get_matcher(lexer.pattern)
+            match = matcher.match(self.text)
 
-    @property
-    def _token_in_queue(self):
-        while self._tokens:
-            token = self._tokens[0]
-            if token.symbol is SNTL and self._emit_sntl is False:
-                self._pop_token()
-                continue
-            return True
-        return False
+            if match:
+                lexeme = match.group()
+                self.text = self.text[match.end():]
+                if lexer.symbol is not None:
+                    # print(lexeme, '|'.join(self.text[:15].splitlines()))
+                    return self._t_class(lexer.symbol, lexeme)
 
-class VMLexer(BaseLexer):
-    def __init__(self, input, language = None,
-                 start_state='_lex_start', emit_sntl=True):
+    def get_symbol(self, name):
+        """Returns a symbol for the given name. This method is memoized."""
+        return self.symbols.setdefault(name, QTerminal(name))
+
+    def get_matcher(self, pattern):
+        """Returns a compiled regex for a pattern. This method is memoized."""
+        return self._compiled_lexers.setdefault(pattern, 
+                                                re.compile(pattern, re.MULTILINE))
 
 
-        super(VMLexer, self).__init__(input, start_state, emit_sntl)
-
-    def _lex_start(self):
-        assert self._start == self._pos
-
-        peek = self._peek
-
-        if peek is None:
-            return self._lex_eof
-
-        elif peek in ' \t\n\r':
-            return self._lex_whitespace
-
-        elif peek == '"':
-            return self._lex_quoted_string
-
-        elif peek == '#':
-            return self._lex_comment
-
-        elif peek in DIGITS:
-            return self._lex_number
-
-        else:
-            return self._lex_name
-
-    def _lex_eof(self):
-        assert self._start == self._pos == self._len
-        return None
-
-    def _lex_name(self):
-        self._accept_until(WHITESPACE)
-        #lexeme = self._input[self._start: self._pos]
-
-        if self._input[self._pos-1] == "'":
-            self._emit(STORAGE)
-        elif self._input[self._pos-1] == ":":
-            self._emit(LABEL)
-        else:
-            self._emit(NAME)
-        return self._lex_start
-
-    def _lex_quoted_string(self):
-        self._skip() # over opening quote
-        self._accept_until('"')
-        self._emit(TEXT)
-
-        # raise unterminated if next character not closing quote
-        if self._peek != '"':
-            raise SyntaxError("unterminated quote")
-        self._skip()
-
-        return self._lex_start
-
-    def _lex_whitespace(self):
-        self._accept_run(' \r\n\t')
-        self._ignore()
-        return self._lex_start
-
-    def _lex_number(self):
-        self._accept_run(DIGITS)
-        self._emit(NUMBER)
-        return self._lex_start
-
-
-    def _lex_comment(self):
-        self._accept_until(EOL)
-        self._ignore()
-        return self._lex_start
-
-
-
-if __name__=='__main__':
-
-
-    stuff = """ # very simple choice, attack or run if too weak
-
-            mylife 5 - 0 < do_run if
+if __name__ == '__main__':
+    VMTokenizer = Tokenizer('')
+    VMTokenizer.add_lexer('\\s+', None)
+    VMTokenizer.add_lexer(r'"[^"]+"', 'LITERAL')
+    VMTokenizer.add_lexer(r"[a-zA-Z_]+\:", 'LABEL')
+    VMTokenizer.add_lexer(r"[a-zA-Z_]+'", 'STORAGE')
+    VMTokenizer.add_lexer(r'#.+$', 'COMMENT')
+    VMTokenizer.add_lexer(r'[a-zA-Z_]+', 'NAME')
+    VMTokenizer.add_lexer(r'\.', 'STOP')
+    VMTokenizer.add_lexer(r'[\d.]+', 'NUMBER')
+    
+    VMTokenizer.add_lexer(r'\S+', 'SYMBOL')
+    
+    print(list(VMTokenizer(""" # very simple choice, attack or run if too weak
+    
+            mylife 5 < do_run if
+            mylife 10 < do_ttyf if
                 "fang and claw" attack' . # comment to ignore
                 do_run: "run" attack' .
-                """
-
-    L = VMLexer(stuff)
-    print(L)
-
-    tokens = []
-    def go():
-        for idx, token in enumerate(L):
-            print((idx, token))
-            tokens.append(token.lexeme)
-
-    go()
-    print(("|".join(tokens), len(tokens)))
-
-
-
-
+                do_ttyf: "ttyf" attack' .
+                """)))
+    
+    print(list(VMTokenizer('mylife do_run')))
+    print(list(VMTokenizer('mylife do_run \n shananana')))
+    print(list(VMTokenizer('mylife do_run # end comment')))
+    print(list(VMTokenizer(''' # start comment \n mylife do_run''')))
+    print(list(VMTokenizer('99 luftballoons')))
+    print(list(VMTokenizer('4 label: item')))

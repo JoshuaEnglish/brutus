@@ -8,12 +8,26 @@ import logging
 
 from .stack import Stack
 from .library import VMLibrary, ControlOperationsLibrary
-from .tokenizer import VMLexer
+from .tokenizer import Tokenizer
 
 
 __version__ = "4.0"
 
 LOG = logging.getLogger('STACKVM')
+
+
+VMTokenizer = Tokenizer('')
+VMTokenizer.add_lexer('\\s+', None)
+VMTokenizer.add_lexer(r'"[^"]+"', 'LITERAL')
+VMTokenizer.add_lexer(r"[a-zA-Z_]+\:", 'LABEL')
+VMTokenizer.add_lexer(r"[a-zA-Z_]+'", 'STORAGE')
+VMTokenizer.add_lexer(r'#.+$', 'COMMENT')
+VMTokenizer.add_lexer(r'[a-zA-Z_]+', 'NAME')
+VMTokenizer.add_lexer(r'\.', 'STOP')
+VMTokenizer.add_lexer(r'[\d.]+', 'NUMBER')
+
+VMTokenizer.add_lexer(r'\S+', 'SYMBOL')
+    
 
 class Namespace(collections.MutableMapping):
     """Namespace()
@@ -81,7 +95,7 @@ class VM(object):
         self.registers = Namespace()
         self.imported_methods = {}
         #self.allow_new_tokens = True
-        self._lexerclass = VMLexer
+        self._lexer = VMTokenizer
 
         self._program = []
         self._continue = 1
@@ -90,9 +104,6 @@ class VM(object):
         self._exports = [] ### Used as a library
         self.history = [] ### history of the stack
 
-    def set_lexer_class(self, lexerclass):
-        """Changes the lexer class for this virtual machine"""
-        self._lexerclass = lexerclass
 
     def __repr__(self):
         return "<VM '%s' version %0.1f>" % (self.name, self.version)
@@ -223,7 +234,7 @@ class VM(object):
         replaces all references to labels with instruction numbers
         """
         registers = self.registers
-        lexer = self._lexerclass(text, language=self)
+        lexer = self._lexer(text)
         tokens = [token.lexeme for token in lexer]
         # tokens leaves the labels in place
         subroutines = {}
