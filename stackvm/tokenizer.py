@@ -27,12 +27,12 @@ class QTerminal(Symbol):
     """Terminal symbol for tokenizers created by :class:`EBNFParser`."""
     is_terminal = True
 
-    
+
 class QNonTerminal(Symbol):
     """Non-terminal symbol for tokenizers created by :class:`EBNFParser`."""
     is_terminal = False
 
-    
+
 class Token(object):
     """Token(symbol, lexeme)
     Container for text (the lexeme) with a symbol defining the role of
@@ -127,10 +127,13 @@ class Tokenizer(object):
             match = matcher.match(self.text)
 
             if match:
-                lexeme = match.group()
+                if match.groups():
+                    lexeme = match.groups()[0]
+                else:
+                    lexeme = match.group()
                 self.text = self.text[match.end():]
                 if lexer.symbol is not None:
-                    # print(lexeme, '|'.join(self.text[:15].splitlines()))
+                    # print(lexeme, ' '.join(self.text[:15].splitlines()))
                     return self._t_class(lexer.symbol, lexeme)
 
     def get_symbol(self, name):
@@ -139,32 +142,32 @@ class Tokenizer(object):
 
     def get_matcher(self, pattern):
         """Returns a compiled regex for a pattern. This method is memoized."""
-        return self._compiled_lexers.setdefault(pattern, 
+        return self._compiled_lexers.setdefault(pattern,
                                                 re.compile(pattern, re.MULTILINE))
 
 
 if __name__ == '__main__':
     VMTokenizer = Tokenizer('')
     VMTokenizer.add_lexer('\\s+', None)
-    VMTokenizer.add_lexer(r'"[^"]+"', 'LITERAL')
+    VMTokenizer.add_lexer(r'"([^"]+)"', 'LITERAL')
     VMTokenizer.add_lexer(r"[a-zA-Z_]+\:", 'LABEL')
     VMTokenizer.add_lexer(r"[a-zA-Z_]+'", 'STORAGE')
     VMTokenizer.add_lexer(r'#.+$', 'COMMENT')
     VMTokenizer.add_lexer(r'[a-zA-Z_]+', 'NAME')
     VMTokenizer.add_lexer(r'\.', 'STOP')
     VMTokenizer.add_lexer(r'-?[\d.]+', 'NUMBER')
-    
+
     VMTokenizer.add_lexer(r'\S+', 'SYMBOL')
-    
+
     print(list(VMTokenizer(""" # very simple choice, attack or run if too weak
-    
+
             mylife 5 < do_run if
             mylife 10 < do_ttyf if
                 "fang and claw" attack' . # comment to ignore
                 do_run: "run" attack' .
                 do_ttyf: "ttyf" attack' .
                 """)))
-    
+
     print(list(VMTokenizer('mylife do_run')))
     print(list(VMTokenizer('mylife do_run \n shananana')))
     print(list(VMTokenizer('mylife do_run # end comment')))
@@ -172,3 +175,4 @@ if __name__ == '__main__':
     print(list(VMTokenizer('99 luftballoons')))
     print(list(VMTokenizer('4 label: item')))
     print(list(VMTokenizer('-9 to go')))
+    print(list(VMTokenizer('"word" he said')))

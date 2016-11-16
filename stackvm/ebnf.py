@@ -32,7 +32,7 @@ EBNFTokenizer.add_lexer(r'\s+', None)
 EBNFTokenizer.add_lexer('[a-z]+', 'RULE')
 EBNFTokenizer.add_lexer('[A-Z]+', 'TERM')
 
-EBNFTokenizer.add_lexer(r'"[^"]+"', 'LITERAL')
+EBNFTokenizer.add_lexer(r'"([^"]+)"', 'LITERAL')
 
 EBNFTokenizer.add_lexer("[{]", 'STARTREPEAT')
 EBNFTokenizer.add_lexer("[}]", 'ENDREPEAT')
@@ -256,7 +256,15 @@ class EBNFParser(object):
         logging.debug("EBNFParser.__init__() end")
 
         self._calls = Counter()
+        self._report_list = []
 
+    def _report(self, ind, *stuff):
+        stuff_string = ' '.join(stuff)
+        self._report_list.append("{}{}".format(indent(ind), stuff_string))
+
+    def report(self):
+        for line in self._report_list:
+            print(line)
 
     def parse_text(self, text):
         self.tokenizer.text = text
@@ -275,7 +283,8 @@ class EBNFParser(object):
         CSTNode and remaining tokens
         """
         parser_node = self.rules.get(rule)
-        # print(indent(i), "trying rule", parser_node.token.lexeme, token_lexemes(parser_node.children), lexemes(tokens))
+        self._report(i, "trying rule", parser_node.token.lexeme,
+                     token_lexemes(parser_node.children), lexemes(tokens))
 
         if parser_node is None:
             logging.exception("No rule for %s", rule)
@@ -295,12 +304,15 @@ class EBNFParser(object):
         return node, tokens
 
     def match(self, parser_node, tokens, i):
-        # print(indent(i),"match '%s' against '%s' with %d remaining" % (parser_node.token.lexeme, tokens[0].lexeme, len(tokens)))
+        self._report(i,
+        "match '%s' against '%s' with %d remaining" % (parser_node.token.lexeme,
+                                                       tokens[0].lexeme,
+                                                       len(tokens)))
         if parser_node.token.is_terminal:
             res, tokens = self.match_terminal(parser_node, tokens, i)
         else:
             res, tokens = self.match_nonterminal(parser_node, tokens, i)
-        # print(indent(i), "match returning (%s, %s)" % (res, lexemes(tokens)))
+        self._report(i, "match returning (%s, %s)" % (res, lexemes(tokens)))
         return res, tokens
 
     def match_terminal(self, parser_node, tokens, i):
@@ -329,7 +341,7 @@ class EBNFParser(object):
 
             if parser_node.token.lexeme == tokens[0].lexeme:
                 logging.debug("matching literal .. matched")
-                # print(indent(i), "ate literal", tokens[0].lexeme)
+                self._report(i, "ate literal", tokens[0].lexeme)
                 node.children.append(CSTNode(tokens[0]))
                 return node, tokens[1:]
 
@@ -338,7 +350,7 @@ class EBNFParser(object):
                 return None, tokens
         elif parser_node.token.lexeme == tokens[0].symbol.name:
             logging.debug("matching symbol %s", parser_node.token.lexeme)
-            # print(indent(i), "ate terminal", tokens[0].lexeme)
+            self._report(i, "ate terminal", tokens[0].lexeme)
             node.children.append(CSTNode(tokens[0]))
             return node, tokens[1:]
         else:
@@ -348,7 +360,7 @@ class EBNFParser(object):
 
     def match_nonterminal(self, parser_node, tokens, i):
         #self._calls[parser_node.token.symbol.name] += 1
-        # print(indent(i),"match_nonterminal '%s' with %d children against %d tokens" % (parser_node.token.lexeme, len(parser_node.children), len(tokens)))
+        self._report(i,"match_nonterminal '%s' with %d children against %d tokens" % (parser_node.token.lexeme, len(parser_node.children), len(tokens)))
         symbol = self.symbol_table[parser_node.token.lexeme.split('-')[0]]
         node = CSTNode(Token(symbol, parser_node.token.lexeme))
         if not tokens:
@@ -361,15 +373,15 @@ class EBNFParser(object):
 
         elif parser_node.token.symbol == REPEATING:
             logging.debug("Handle repeating elements (0 or more)")
-            # print(indent(i),"Matching Repeating Element", parser_node.token.lexeme)
+            self._report(i,"Matching Repeating Element", parser_node.token.lexeme)
             child, tokens = self.match_repeating(parser_node, tokens, i+1)
 
         elif parser_node.token.symbol == SEQUENCE: # match a sequence
-            # print(indent(i),"Matching sequence:", token_lexemes(parser_node.children))
+            self._report(i,"Matching sequence:", token_lexemes(parser_node.children))
             found, tokens = self.match_sequence(parser_node.token.lexeme,
                                                 parser_node.children,
                                                 tokens, i+1)
-            # print(indent(i), "matched sequence, extending with", found)
+            self._report(i, "matched sequence, extending with", token_lexemes(found))
             node.children.extend(found)
 
 #        elif parser_node.token.symbol == RULE:
@@ -379,7 +391,7 @@ class EBNFParser(object):
             raise SyntaxError("ran out of options in match_nonterminal")
 
         if child is not None:
-            # print(indent(i), "matched nonterminal, extending with", token_lexemes(child.children))
+            self._report(i, "matched nonterminal, extending with", token_lexemes(child.children))
             node.children.extend(child.children)
 
         if node.children:
@@ -397,10 +409,10 @@ class EBNFParser(object):
         logging.debug("match repeating")
         keep_trying = True
         while keep_trying:
-            # print(indent(i),"match repeating for", token, expected, tokens)
+            self._report(i,"match repeating for", str(token))
             addends, tokens = self.match_sequence(token.lexeme, expected,
                                                   tokens, i+1)
-            # print(indent(i),"from match_sequence:", addends, tokens)
+            self._report(i,"from match_sequence:", token_lexemes(addends), lexemes(tokens))
             if addends:
                 node.children.extend(addends)
                 #print_cstnode(node, i)
@@ -430,19 +442,19 @@ class EBNFParser(object):
             preview = tokens[0] if tokens else "No tokens"
             logging.debug("trying alternate: %s against %s",
                           token_lexemes(alternate), preview)
-            # print(indent(i),"trying alternate", token_lexemes(alternate))
+            self._report(i,"trying alternate", token_lexemes(alternate))
             found, tokens = self.match_sequence(parser_node.token.lexeme,
                                                 alternate, tokens, i+1)
             if found:
                 logging.debug("..got it!")
-                # print(indent(i), "matched alternate", token_lexemes(alternate))
+                self._report(i, "matched alternate", token_lexemes(alternate))
                 node.children.extend(found)
                 #print_cstnode(node, i+1)
                 return node, tokens
             else:
-                # print(indent(i), "did not match alternate", token_lexemes(alternate))
+                self._report(i, "did not match alternate", token_lexemes(alternate))
                 logging.debug("..nope")
-        # print(indent(i),"all alternates failed")
+        self._report(i,"all alternates failed")
         return None, tokens
 
 
@@ -456,9 +468,9 @@ class EBNFParser(object):
         while expected:
             this = expected[0]
             if not tokens:
-                # print(indent(i),"sequence '%s' out of tokens, bailing" % name)
+                self._report(i,"sequence '%s' out of tokens, bailing" % name)
                 return found, tokens
-            # print(indent(i), "expecting in '%s': '%s', got '%s'" % (name, this.token.lexeme, tokens[0].lexeme), end='')
+            self._report(i, "expecting in '%s': '%s', got '%s'" % (name, this.token.lexeme, tokens[0].lexeme))
             # print(" (%d expected items)" % (len(expected)+1)) # add one because we popped the value from expected
             if tokens:
                 logging.debug("expecting: %s got %s", this, tokens[0])
@@ -466,13 +478,13 @@ class EBNFParser(object):
                 logging.debug("expecing: %s with no tokens", this)
             node, tokens = self.match(this, tokens, i+1)
             if node is not None:
-                # print(indent(i), "found", token_lexemes(node.children))
+                self._report(i, "found", token_lexemes(node.children))
                 found.extend(node.children)
             else:
-                # print(indent(i), "sequence failed on", this.token.lexeme)
+                self._report(i, "sequence failed on", this.token.lexeme)
                 return  found, tokens
             expected.pop(0)
-            # print(indent(i), 'end of sequence loop, expecting: %s against %s' % (token_lexemes(expected), lexemes(tokens)), originals)
+            self._report(i, 'end of sequence loop, expecting: %s against %s' % (token_lexemes(expected), lexemes(tokens)))
 
          #print(indent(i),"Out of expectations. Node has", len(found), "child%s" % ("" if len(found)==1 else "ren"))
         return found, tokens

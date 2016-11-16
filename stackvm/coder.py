@@ -4,11 +4,22 @@ Coder
 
 Translates :class:`CSTNodes` to code for the stack machine
 """
+from collections import Counter
+
 
 class Coder(object):
     """code generation tool"""
+
     def __init__(self):
         self.code = []
+        self._labels = Counter()
+
+    def make_label(self, name):
+        """returns a new label in a sequence"""
+        this = self._labels[name]
+        label = "{}_{}".format(name, this)
+        self._labels[name] += 1
+        return label
 
     def encode(self, node):
         """return a space deliniated string of items of code.
