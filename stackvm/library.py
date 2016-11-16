@@ -170,6 +170,7 @@ class ControlOperationsLibrary(VMLibrary):
         self.add_export(['jump', 'goto'], 'do_jump_control')
 
     def do_if_control(self, caller, parent):
+        "cond if_true_line if"
         line, value = parent.stack.pop(), parent.stack.pop()
         if isinstance(line, str) and not line.isdigit():
             raise ValueError("Possibly missing label: %s" % line)
@@ -177,18 +178,19 @@ class ControlOperationsLibrary(VMLibrary):
             parent.go_to_instruction(int(line))
 
     def do_ife_control(self, caller, parent):
+        "cond if_true_line if_false_line ife"
         line1, line2, value = parent.stack.pop(), parent.stack.pop(), parent.stack.pop()
-        if not line1.isdigit():
+        if isinstance(line1, str) and not line1.isdigit():
             raise ValueError("Possibly missing label: %s" % line1)
-        if not line2.isdigit():
+        if isinstance(line2, str) and not line2.isdigit():
             raise ValueError("Possibly missing label: %s" % line2)
         if value:
-            parent.go_to_instruction(int(line1))
-        else:
             parent.go_to_instruction(int(line2))
+        else:
+            parent.go_to_instruction(int(line1))
 
     def do_jump_control(self, caller, parent):
         line = parent.stack.pop()
-        if not line.isdigit():
+        if isinstance(line, str) and not line.isdigit():
             raise ValueError("Possible missing label: %s" % line)
         parent.go_to_instruction(int(line))
