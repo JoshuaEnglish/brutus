@@ -7,7 +7,7 @@ Results from previous lines can be used in later lines.
 from stackvm import Parser, Coder, BaseMachine
 from stackvm.utils import print_xml
 
-text = """statement := assignment | expr ;
+text = """statement := expr | assignment  ;
         assignment := VAR STORE expr STOP;
         expr := term {("+" | "-") term};
         term := factor {("*" | "/") factor};
@@ -44,7 +44,7 @@ p = Parser(text)
 mather = BaseMachine('math')
 
 
-def do_something(text):
+def do(text):
     print(list(p.tokenizer(text)))
     node, detritus = p.parse_text(text)
     if detritus:

@@ -48,7 +48,7 @@ class IfThenCoder(Coder):
         variable, op, stuff = node.children
         self.handle_node(stuff)
         self.code.append("{}'".format(variable.token.lexeme))
-    
+
     def encode_ifstmt(self, node):
         print("ifstmt", node, token_lexemes(node.children))
         # target comp if
@@ -56,15 +56,15 @@ class IfThenCoder(Coder):
         if len(node.children) < 8:
             # we've got a regular if statement
             # cond not endif if if_true endif:
-            
+
             endif = self.make_label('if')
-            
+
             self.handle_node(node.children[2]) # name
             self.code.append('not')
             self.code.append(endif)
-            
+
             self.code.append('if')
-            
+
             self.handle_node(node.children[5]) # if true clause
             self.code.append('{}:'.format(endif))
         else:
@@ -76,9 +76,9 @@ class IfThenCoder(Coder):
             self.handle_node(node.children[2]) # name
             self.code.append(iftrue)
             self.code.append(iffalse)
-            
+
             self.code.append('ife')
-            
+
             self.code.append('{}:'.format(iftrue))
             self.handle_node(node.children[5])
             self.code.append(endif)
@@ -87,8 +87,8 @@ class IfThenCoder(Coder):
             self.handle_node(node.children[9])
             self.code.append('{}:'.format(endif))
 
-        
-            
+
+
 #
 coder = IfThenCoder()
 code = coder.encode(node)
@@ -97,5 +97,5 @@ print("Code:", code)
 chooser = BaseMachine('ifthen')
 chooser.feed(code)
 print(chooser.program)
-chooser.run(a=1)
+chooser.run(a=0)
 print(chooser.registers)

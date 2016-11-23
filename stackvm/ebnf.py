@@ -207,7 +207,21 @@ def split_by_or(iterable):
     """splits a list of EBNFTokens into separate lists defined by OR symbols"""
     return [list(g) for k, g in groupby(iterable, lambda x: x.token.symbol == OR)
             if not k]
+__logic__ = """
+match_sequence(list_of_expected_nodes, list_of_tokens)
+    returns a (list_of_CSTNodes, list_of_remaining_tokens) or ([], list_of_tokens)
 
+match_terminal(expected_node, list_of_tokens)
+
+New idea: tertiary (and secondary) methods return a boolean if a match was made
+or not
+
+match_rule(rulename, list_of_tokens)
+    match(parsernode, list_of_tokens)
+        match_terminal(parsernode, list_of_tokens)
+        match_non_terminal(parsernode, list_of_tokens)
+
+"""
 class EBNFParser(object):
     """
     Class to read EBNF text and return a dictionary of rules
@@ -267,6 +281,7 @@ class EBNFParser(object):
             print(line)
 
     def parse_text(self, text):
+        self._report_list = []
         self.tokenizer.text = text
         tokens = list(self.tokenizer)
         # print("Parsing tokens:", tokens)
@@ -462,6 +477,7 @@ class EBNFParser(object):
         """returns a list of CSTNodes and a list of remaining tokens"""
         #self._calls['match_sequence'] += 1
         expected = list(originals) # should create a copy
+        orig_tokens = list(tokens)
 
         found = []
 
@@ -483,6 +499,7 @@ class EBNFParser(object):
             else:
                 self._report(i, "sequence failed on", this.token.lexeme)
                 return  found, tokens
+                #return [], orig_tokens
             expected.pop(0)
             self._report(i, 'end of sequence loop, expecting: %s against %s' % (token_lexemes(expected), lexemes(tokens)))
 
