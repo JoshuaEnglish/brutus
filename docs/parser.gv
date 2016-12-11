@@ -1,0 +1,8 @@
+digraph structs {
+        node [shape=record, width=.1,height=.1];
+            statements [label="<a1> assignment| {repeating |<a2> assignment}"];
+            assignment [label= "VAR | STORE |<expr> expr | STOP"];
+            expr [label="<t0>term | { repeating | {{alternate | {+ | -} } |<t1> term}}"];
+            term [label="<f0>factor | { repeating | {{alternate | {* | /} } |<f1> factor}}"];
+            factor [label="{alternate | { NUMBER | VAR | ( expr ) }}"];
+    }

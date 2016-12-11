@@ -8,38 +8,65 @@ from collections import Counter
 
 
 class Coder(object):
-    """code generation tool"""
+    """Code generation tool. For each token in the concrete syntax tree,
+    declare a method ``encode_nnn`` where `nnn` is the name of the token's
+    symbol.
+    
+    Several ``handle_xxx`` methods exist as shortcuts.
+    
+    Use these to define your own class::
+        
+        class MathCoder(Coder):
+            encode_integer = Coder.encode_terminal
+            encode_binop = Coder.handle_terminal
+            encode_parens = Coder.do_nothing
+            
+        mycoder = MathCoder()
+        code = mycode.encode(parsed_cst_node)
+    
+    """
 
     def __init__(self):
         self.code = []
         self._labels = Counter()
+        """Keeps track of individual sequential labels"""
 
     def make_label(self, name):
-        """returns a new label in a sequence"""
+        """Returns a new label in a sequence.
+        
+        Save the results of this call to use later.
+        
+        Sample:
+            self.make_label('subroutine') -> 'subroutine_0'
+            self.make_label('subroutine') -> 'subroutine_1'
+            
+        Please see examples\ifthen.py for an example of this method's use.
+
+        """
         this = self._labels[name]
         label = "{}_{}".format(name, this)
         self._labels[name] += 1
         return label
 
-    def encode(self, node):
-        """return a space deliniated string of items of code.
+    def encode(self, cstnode):
+        """Return a space deliniated string of items of code.
         Automatically appends 'END' if needed.
         """
-        self.handle_node(node)
+        self.handle_node(cstnode)
         if self.code[-1] not in ['.', 'END', 'end']:
             self.code.append('END')
         return " ".join(self.code)
 
     def handle_terminal(self, node):
-        """adds the token's lexeme to the code output"""
+        """Adds the token's lexeme to the code output"""
         self.code.append(node.token.lexeme)
 
     def encode_terminal(self, node):
-        """adds the token's lexeme to the code output"""
+        """Adds the token's lexeme to the code output"""
         self.code.append(node.token.lexeme)
 
     def handle_binary_node(self, node):
-        """converts a repeating infix operation to postfix in the code output"""
+        """Converts a repeating infix operation to postfix in the code output"""
         self.handle_node(node.children[0])
         idx = 1
         while idx < len(node.children):
@@ -49,7 +76,7 @@ class Coder(object):
 
 
     def handle_node(self, node):
-        """determines which encode_xxx function to call based on the CSTNode's
+        """Determines which encode_xxx function to call based on the CSTNode's
         token or symbol name.
         """
         func_name = "encode_{}".format(node.token.lexeme)
@@ -62,10 +89,10 @@ class Coder(object):
             raise SyntaxError("Coder cannot handle %s" % node)
 
     def handle_children(self, node):
-        """encodes children, ignoring the parent node"""
+        """Encodes children, ignoring the parent node"""
         for child in node.children:
             self.handle_node(child)
 
     def do_nothing(self, node):
-        """ignores the node in code generation"""
+        """Ignores the node in code generation."""
         pass

@@ -1,76 +1,80 @@
-
+# -*- coding: utf-8 -*-
+"""
+Libraries for Brutus's :class:`Machine`.
+"""
 
 import collections
 import operator as OP
 
-    
+
 class VMLibrary:
     """This class allows users to import from predefined libraries.
     Importing a library may generate errors if you use a keyword that is in
     the library before importing the library.
     """
-    
-    def __init__(self,name,version):
-        self.Name = str(name)
-        self.Version = float(version)
+
+    def __init__(self, name, version):
+        self.name = str(name)
+        self.version = float(version)
         self.reserved_words = []
         self.exports = []
-    
+
     def __repr__(self):
-        return "<VMLibrary '%s' version %0.1f>" % (self.Name,self.Version)
-        
+        return "<VMLibrary '%s' version %0.1f>" % (self.name, self.version)
+
     def add_export(self, matches, func, caller=None):
         """add_export(list, string, [string])
-        The first item is a list of string objects which can be used to call the method, 
-        which is determined by the first string. The optional second string is passed 
+        The first item is a list of string objects which can be used to call the method,
+        which is determined by the first string. The optional second string is passed
         to the method when called.
-        
-        This method follows the same rules as the VM.add_rule method. 
+
+        This method follows the same rules as the VM.add_rule method.
         """
-        
+
         if not isinstance(matches, (list, tuple)):
             raise ValueError("Matches must be list or tuple")
-            
+
         if not all(isinstance(x, str) for x in matches):
             raise ValueError("Non-String in matches list")
-        
+
         for match in matches:
             if match.upper() in self.reserved_words:
                 raise ValueError("Reserved Word %s reused" % (match))
             if match.split()[0] != match:
                 raise ValueError("Match %s cannot contain spaces" % (match))
-                
+
         matches = [m.upper() for m in matches]
-        
+
         ### Make sure func is valid
         if not isinstance(func, str):
             raise ValueError("Cannot convert function name to string")
         func = func.strip()
-        if not func: 
+        if not func:
             raise ValueError("Function must contain alphanumeric characters")
         if func.split()[0] != func:
             raise ValueError("Function cannot contain white space")
-        
+
         ### Make sure that caller is valid (if there)
-        if caller: 
-            if not isinstance(caller, (str,collections.Callable)):
+        if caller:
+            if not isinstance(caller, (str, collections.Callable)):
                 raise ValueError("Caller must be a string or callable")
             if isinstance(caller, str):
                 caller = caller.strip()
                 if caller.split()[0] != caller:
                     raise ValueError("Caller cannot contain whitespace")
-            
-        ### Add the matches to 
+
+        ### Add the matches to
         self.reserved_words.extend(matches)
         self.exports.append((matches, func, caller))
-    
+
     def methods(self):
         """Returns a list of method names that are available from this library"""
         res = []
         for match, func, caller in self.exports:
-            if func not in res: res.append(func)
+            if func not in res: 
+                res.append(func)
         return res
-        
+
 
 
 class FiveFunctionLibrary(VMLibrary):
@@ -95,20 +99,23 @@ class FiveFunctionLibrary(VMLibrary):
         self.add_export(['mod', '%'], 'do_5f_op', OP.mod)
 
     def do_5f_op(self, op, parent):
+        """perform one of the five basic binary operations;
+        addition, subtraction, multiplication, integer division, remainder
+        """
         right = parent.stack.pop()
-        right = int(parent.registers[right] 
-                    if right in parent.registers 
+        right = int(parent.registers[right]
+                    if right in parent.registers
                     else right)
 
         left = parent.stack.pop()
-        left = int(parent.registers[left] 
-                   if left in parent.registers 
+        left = int(parent.registers[left]
+                   if left in parent.registers
                    else left)
-        
+
         res = op(left, right)
         parent.stack.push(res)
-        
-        
+
+
 
 class ComparisonsLibrary(VMLibrary):
     """ComparisonsLibrary
@@ -190,6 +197,7 @@ class ControlOperationsLibrary(VMLibrary):
             parent.go_to_instruction(int(line1))
 
     def do_jump_control(self, caller, parent):
+        "target jump"
         line = parent.stack.pop()
         if isinstance(line, str) and not line.isdigit():
             raise ValueError("Possible missing label: %s" % line)

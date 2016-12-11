@@ -1,5 +1,6 @@
-Getting Started
-===============
+=================
+Using the Machine
+=================
 
 Stackvm is a simple stack-based virtual machine. It consists of four components:
 
@@ -83,7 +84,7 @@ register has the key, the value is added to the stack. If the
 register does not have the name as a key, then the name is 
 written to the stack.
 
-.. code-block::
+.. code-block:: python
 
    >>> vm.feed("42 answer' .")
    >>> vm.run()
@@ -99,7 +100,7 @@ written to the stack.
 Registers can store string data as well. Surround compound strings
 with quotation marks.
 
-.. code-block::
+.. code-block:: python
 
    >>> vm.feed(""" monty firstname' python's lastname' "flying circus" show' . """)
    >>> vm.run()

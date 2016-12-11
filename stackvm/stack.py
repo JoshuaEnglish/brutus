@@ -5,7 +5,6 @@ Simple Last-In-First-Out stack.
 """
 
 
-
 class Stack:
     """Stack(items)
     Simple LIFO stack. Supports pushing elements and lists, and poping from the top
@@ -24,10 +23,8 @@ class Stack:
 
         if isinstance(item, (list, tuple)):
             self.items.extend(item)
-
         else:
             self.items.append(item)
-
 
     def pop(self):
         """stack.pop()
@@ -46,7 +43,6 @@ class Stack:
         """
         return self.items == []
 
-
     def __str__(self):
         return '[Stack: %s]' % ', '.join([str(item) for item in self.items])
 
@@ -61,7 +57,6 @@ class Stack:
         Removes all values from the stack
         """
         self.items = []
-
 
     def __len__(self):
         return len(self.items)

@@ -1,3 +1,4 @@
+====================
 Defining a Language
 ====================
 
@@ -15,9 +16,9 @@ And return results as a dictionary ``{"A": 20, "B": 10}``
     The example input demonstrates that spaces shouldn't matter, and ``<-`` is
     being used as an assignment or storage operator.
 
-We will define the REBNF for the languange and a CodeWriter to do this.
+We will define the |REBNF| for the languange and a CodeWriter to do this.
 
-The parser will take the REBNF and create an tokenizer, which will turn our 
+The parser will take the |REBNF| and create an tokenizer, which will turn our 
 input into the following::
 
     [<VAR Token: a >, <STORE Token: <- >, <INTEGER Token: 2 >, <MUL Token: * >, 
@@ -25,7 +26,7 @@ input into the following::
     <INTEGER Token: 2 >, <STOP Token: . >, <VAR Token: b >, <STORE Token: <- >, 
     <VAR Token: a >, <DIV Token: / >, <INTEGER Token: 2 >, <STOP Token: . >]
 
-The REBNF parse function will turn this list of tokens into a concrete
+The Parser will turn this list of tokens into a concrete
 syntax tree::
 
     <statements>
@@ -74,10 +75,10 @@ After running this program the machine's registers will be a dictionary::
 The REBNF
 =========
 
-REBNF uses EBNF to define non-terminal symbols and 
+|REBNF| uses :abbr:`EBNF (Extended Backus-Naur Form)` to define non-terminal symbols and 
 regular expressions to define terminal symbols.
 
-Our REBNF looks like this::
+Our |REBNF| looks like this::
 
     statements := assignment { assignment } ;
     assignment := VAR STORE expr STOP;
@@ -95,14 +96,15 @@ Our REBNF looks like this::
     OP := [(];
     CP := [)];
 
-REBNF uses the following rules:
+|REBNF| uses the following rules:
 
 
 =========  ============================================================
 Item       Description
 =========  ============================================================
 UPPERCASE  Anything in uppercase is considered a terminal symbol
-           and should define 
+           and should define a regular expression
+           
 lowercase  Anything in lowercase in considered a non terminal symbol
            defined by a rule
            
@@ -110,14 +112,17 @@ lowercase  Anything in lowercase in considered a non terminal symbol
            that must appear in the program. The language tokenizer can 
            have any symbol, as long as the lexeme matches
            
-           The current version of REBNF does not support literal
-           terminals
-           
 {}         Curly brackets are used to group an optional repeating group 
            which much appear 0 or more times
    
 ()         Parenthesis group tokens and other groups.
-|          The pipe serves as the OR operator. (PLUS | MINUS) indicates
+
+[]         Square brackets indicate optional sequences
+
+<>         Angled brackets indicate sequences that should appear at
+           least once.
+           
+|          The pipe serves as the OR operator. ("+" | "-") indicates
            either of two literals will be accepted.
            
 ;          End of an EBNF definition line.

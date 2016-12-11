@@ -8,10 +8,11 @@ from stackvm import Parser, Coder, BaseMachine
 from stackvm.utils import print_xml
 
 text = """statement := expr | assignment  ;
-        assignment := VAR STORE expr STOP;
+        assignment := "let" VAR STORE expr STOP;
         expr := term {("+" | "-") term};
         term := factor {("*" | "/") factor};
         factor := INTEGER | VAR | "(" expr ")";
+        KEYWORD := let;
         VAR := [a-z]+;
         INTEGER := -?[0-9]+;
         STORE := <-;
@@ -46,7 +47,7 @@ mather = BaseMachine('math')
 
 def do(text):
     print(list(p.tokenizer(text)))
-    node, detritus = p.parse_text(text)
+    ok, node, detritus = p.parse_text(text)
     if detritus:
         print("OOPS", detritus)
         return None

@@ -3,6 +3,8 @@
 Sample multi-line 4-function calculator.
 
 Results from previous lines can be used in later lines.
+
+The order of operations is implied in how the REBNF is defined.
 """
 from stackvm import Parser, Coder, BaseMachine
 from stackvm.utils import print_xml
@@ -18,14 +20,14 @@ text = """statements := assignment { assignment } ;
         BINOP := [+\-*/];
         STOP := [\.];
         PARENS := [()];
-        
         """
 
 p = Parser(text)
-program = """a <- 2*(7+3)*4 . 
+program = """a <- 2*7+3*4 . 
 b<-a/2."""
-print(list(p.tokenizer(program)))
-node, detritus = p.parse_text(program)
+simple = """x <- 2 - 3 * 4."""
+print(list(p.tokenizer(simple)))
+ok, node, detritus = p.parse_text(simple)
 print_xml(node)
 print(detritus)
 

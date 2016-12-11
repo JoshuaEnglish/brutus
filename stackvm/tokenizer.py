@@ -41,7 +41,7 @@ class Token(object):
     __slots__ = ('_symbol', '_lexeme')
 
     def __init__(self, symbol, lexeme):
-        self._symbol = symbol  # always a terminal symbol
+        self.symbol = symbol  # always a terminal symbol
         self._lexeme = lexeme
 
     @property
@@ -53,6 +53,7 @@ class Token(object):
     def symbol(self, newsymbol):
         if not isinstance(newsymbol, Symbol):
             raise ValueError("cannot update EBNFToken symbol to non Symbol")
+        
         self._symbol = newsymbol
 
     @property
@@ -72,6 +73,9 @@ class Token(object):
 
     __repr__ = __str__
 
+    #def __eq__(self, other):
+    #    return (self.symbol, self.lexeme) == (other.symbol, other.lexeme)
+        
 Lexer = namedtuple('Lexer', 'pattern symbol')
 
 

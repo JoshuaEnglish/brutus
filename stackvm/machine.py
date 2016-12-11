@@ -27,7 +27,7 @@ VMTokenizer.add_lexer(r'\.', 'STOP')
 VMTokenizer.add_lexer(r'-?[\d.]+', 'NUMBER')
 
 VMTokenizer.add_lexer(r'\S+', 'SYMBOL')
-    
+
 
 class Namespace(collections.MutableMapping):
     """Namespace()
@@ -109,10 +109,10 @@ class VM(object):
         return "<VM '%s' version %0.1f>" % (self.name, self.version)
 
     def add_rule(self, matches, func, caller=None):
-        """add_rule(matches, func, [string])
+        """add_rule(matches, func, [caller])
         The first item is a list of string objects which can be used to call the method,
-        which is determined by the first string. The optional second string is passed
-        to the method when called.
+        which is determined by the first string. 
+        caller should be none or a callable object
         """
         LOG.debug("Adding rules for: %s", matches)
         ### Make sure matches are valid
@@ -274,7 +274,7 @@ class VM(object):
         #self.registers.clear()
 
     def run(self, **registers):
-        """run through the program"""
+        """run through the program. can provide keyword arguments"""
         if registers:
             self.set_register(**registers)
 

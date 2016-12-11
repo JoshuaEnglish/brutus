@@ -1,0 +1,56 @@
+===================
+Brute Force Parsing
+===================
+
+There are several well known algorithms for parsing EBNF-like languages into
+syntax trees. As a programmer, I want to solve this problem myself. As an
+uncreative programmer, I have to do this the hard way until I see enough 
+of my own work to understand the work of others.
+
+This page attempts to outline the basic logic based on the :doc:`excalc` example.
+
+The |REBNF| is transformed into a dictionary of parser trees. The target program
+has been tokenized into a list of tokens. The parser will begin with the first
+defined rule in the |REBNF| ("statements") and work through the tokens until it 
+can build the concrete syntax tree.
+
+.. graphviz::
+
+    digraph parsing {
+        REBNF -> EBNFNode -> parser -> CSTNode -> Coder -> Machine;
+        "tokenized input" -> parser;
+        
+        
+    }
+
+.. graphviz::
+
+ 
+
+The Starting State
+------------------
+
+Brutus starts with the first rule defined in the |REBNF| and the list of tokens:
+
++----------------------------+
+| sequence statements        |
++=+==========================+
+| | rule assignment          |
++-+--------------------------+
+| | repeating statements-1   |
++-+-+------------------------+
+|   | rule assignment        |
++---+------------------------+
+
+And the first few tokens:
+
+=======  =====  ======  =======  ===
+INTEGER  BINOP  PARENS  INTEGER  
+=======  =====  ======  =======  ===
+2        \*     (       7        ...
+=======  =====  ======  =======  ===
+
+The rule is a sequence, so we match the first child with the first token.
+
+The first child is ``rule assignment`` so we match 
+   

@@ -1,0 +1,159 @@
+******************
+Calculator Example
+******************
+
+.. toctree::
+   :hidden:
+
+   self
+   
+This example shows how to create a simple multi-line four function calculator DSL.
+
+.. literalinclude:: ../examples/calc.py
+    :end-before: program =
+    
+
+The Parser takes our |REBNF| text and now can read a program.
+
+.. literalinclude:: ../examples/calc.py
+    :start-after: p = Parser(text)
+    :end-before: class MathCoder
+    
+    
+This example can process either a two-line program or a one-line program.
+
+.. literalinclude:: ../examples/calc.py
+    :start-after: print(detritus)
+    :end-before: mather =
+    
+    
+This part of the code creates the :class:`Coder` object, using several
+shortcuts to describe how the code should be generated. The only non-terminal
+token we need to deal with specifically is the assignment node.
+
+.. literalinclude:: ../examples/calc.py
+    :start-after: print("Code:"
+    
+    
+The last step creates a :class:`BaseMachine` instance, feeds in the generated
+code, and prints the final registers.
+
+
+
+The output of this script::
+
+    [<VAR Token: a >, <STORE Token: <- >, <INTEGER Token: 2 >, <BINOP Token: * >, <INTEGER Token: 7 >, <BINOP Token: + >, <INTEGER Token: 3 >, <BINOP Token: * >, <INTEGER Token: 4 >, <STOP Token: . >, <VAR Token: b >, <STORE Token: <- >, <VAR Token: a >, <BINOP Token: / >, <INTEGER Token: 2 >, <STOP Token: . >]
+    <statements>
+     .<assignment>
+     .  <var> a </var>
+     .  <store> <- </store>
+     .  <expr>
+     .   .<term>
+     .   .  <integer> 2 </integer>
+     .   .  <binop> * </binop>
+     .   .  <integer> 7 </integer>
+     .   .</term>
+     .   .<binop> + </binop>
+     .   .<term>
+     .   .  <integer> 3 </integer>
+     .   .  <binop> * </binop>
+     .   .  <integer> 4 </integer>
+     .   .</term>
+     .  </expr>
+     .  <stop> . </stop>
+     .</assignment>
+     .<assignment>
+     .  <var> b </var>
+     .  <store> <- </store>
+     .  <term>
+     .   .<var> a </var>
+     .   .<binop> / </binop>
+     .   .<integer> 2 </integer>
+     .  </term>
+     .  <stop> . </stop>
+     .</assignment>
+    </statements>
+    []
+    Code: 2 7 * 3 4 * + a' a 2 / b' END
+    {'B': 13.0, 'A': 26}
+
+    
+Machine History
+===============
+
+It is possible to examine ``mather``'s history:
+
+.. list-table:: The Machine Step-by-Step
+   :widths: 1 1 5 10 20
+   :header-rows: 1
+   
+   * - Cycle
+     - Instruction
+     - Code
+     - Stack
+     - Registers
+   * - 0
+     - 0
+     - '2'
+     - []
+     - {'A': 0, 'B': 0})
+   * - 1
+     - 1
+     - '7'
+     - [2]
+     - {'A': 0, 'B': 0})
+   * - 2
+     - 2
+     - '*'
+     - [2, 7]
+     - {'A': 0, 'B': 0})
+   * - 3
+     - 3
+     - '3'
+     - [14]
+     - {'A': 0, 'B': 0})
+   * - 4
+     - 4
+     - '4'
+     - [14, 3]
+     - {'A': 0, 'B': 0})
+   * - 5
+     - 5
+     - '*'
+     - [14, 3, 4]
+     - {'A': 0, 'B': 0})
+   * - 6
+     - 6
+     - '+'
+     - [14, 12]
+     - {'A': 0, 'B': 0})
+   * - 7
+     - 7
+     - "a'"
+     - [26]
+     - {'A': 0, 'B': 0})
+   * - 8
+     - 8
+     - 'a'
+     - []
+     - {'A': 26, 'B': 0})
+   * - 9
+     - 9
+     - '2'
+     - [26]
+     - {'A': 26, 'B': 0})
+   * - 10
+     - 10
+     - '/'
+     - [26, 2]
+     - {'A': 26, 'B': 0})
+   * - 11
+     - 11
+     - "b'"
+     - [13.0]
+     - {'A': 26, 'B': 0})
+   * - 12
+     - 12
+     - 'END'
+     - []
+     - {'A': 26, 'B': 13.0})

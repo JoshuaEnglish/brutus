@@ -1,5 +1,6 @@
-Machine
-=======
+==================
+machine.py
+==================
 
 The :class:`VM` class keeps track of the stack, registers, and rules. The 
 :class:`VM` class also compiles and stores programs, and runs those programs.

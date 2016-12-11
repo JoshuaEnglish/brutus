@@ -4,7 +4,7 @@ from setuptools import setup
 
 
 setup(
-    name = 'stackvm',
+    name = 'brutus',
     version = '4.0.0',
     description = 'A simple abstract virtual machine',
     long_description = """""",

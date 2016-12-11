@@ -27,7 +27,7 @@ ifonly = """ if (a) (res <- "true") """
 program = ifonly
 
 print(list(p.tokenizer(program)))
-node, detritus = p.parse_text(program)
+ok, node, detritus = p.parse_text(program)
 print_xml(node)
 print(detritus)
 
@@ -97,5 +97,5 @@ print("Code:", code)
 chooser = BaseMachine('ifthen')
 chooser.feed(code)
 print(chooser.program)
-chooser.run(a=0)
+chooser.run(a=1)
 print(chooser.registers)
