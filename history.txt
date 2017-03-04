@@ -1,2 +1,3 @@
 2016.09.28 -- Removed "if self.debug: print ..." and replaced with proper logging
 2016.11.14 -- lots of changes. Using regular expressions for tokenization
+2016.12.10 -- Renamed to Brutus. Works for simple languages but cannot parse ambiguous languages

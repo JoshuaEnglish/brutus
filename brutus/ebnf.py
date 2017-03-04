@@ -451,6 +451,7 @@ class EBNFParser(object):
             node.children.extend(found)
 
         else:
+            self._report(i, "mnt:ran out of options in match_nonterminal. error.")
             raise SyntaxError("ran out of options in match_nonterminal")
 
         if child is not None:

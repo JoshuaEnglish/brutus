@@ -1,7 +1,7 @@
 import unittest
 
-from stackvm import stack, Parser
-from stackvm.tokenizer import Symbol, QTerminal, QNonTerminal, Token, Tokenizer
+from brutus import stack, ebnf, Parser, BaseMachine, Coder
+from brutus.tokenizer import Symbol, QTerminal, QNonTerminal, Token, Tokenizer
 
 
 class StackTest(unittest.TestCase):
@@ -112,5 +112,38 @@ class ParserTest(unittest.TestCase):
         bracket = second.children[0]
         
         self.assertEqual(bracket.token.symbol.name, 'TERM')
+
+class CalcTest(unittest.TestCase):
+    text = """statements := assignment { assignment } ;
+        assignment := VAR STORE expr STOP;
+        expr := term {("+" | "-") term};
+        term := factor {("*" | "/") factor};
+        factor := INTEGER | VAR | "(" expr ")";
+        VAR := [a-z]+;
+        INTEGER := -?[0-9]+;
+        STORE := <-;
+        BINOP := [+\-*/];
+        STOP := [\.];
+        PARENS := [()];
+        """
+    parser = Parser(text)
+    
+    def test_simple(self):
+        ok, node, detritus = self.parser.parse_text("x <- 2 - 1.")
+        self.assertTrue(ok)
+        self.assertListEqual(detritus, [])
+        self.assertEqual(node.token.lexeme, 'statements')
+        self.assertEqual(len(node.children), 1)
+        child = node.children[0]
+        self.assertEqual(child.token.lexeme, 'assignment')
+        self.assertEqual(len(child.children), 4)
+
+class OptionalTest(unittest.TestCase):
+    text = """list := A [B]; A := [a-z]+; B := [0-9];"""
+    parser = Parser(text)
+    
+    def test_simple(self):
+        ok, node, detritus = self.parser.parse_text('a 1')
+        self.assertTrue(ok)
 if __name__ == '__main__':
     unittest.main()

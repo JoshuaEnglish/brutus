@@ -4,5 +4,5 @@ digraph structs {
             assignment [label= "VAR | STORE |<expr> expr | STOP"];
             expr [label="<t0>term | { repeating | {{alternate | {+ | -} } |<t1> term}}"];
             term [label="<f0>factor | { repeating | {{alternate | {* | /} } |<f1> factor}}"];
-            factor [label="{alternate | { NUMBER | VAR | ( expr ) }}"];
+            factor [label="{alternate | { NUMBER | VAR | {sequence | {( |expr| )}} }}"];
     }

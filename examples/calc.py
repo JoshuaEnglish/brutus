@@ -6,11 +6,11 @@ Results from previous lines can be used in later lines.
 
 The order of operations is implied in how the REBNF is defined.
 """
-from stackvm import Parser, Coder, BaseMachine
-from stackvm.utils import print_xml
+from brutus import Parser, Coder, BaseMachine
+from brutus.utils import print_xml
 
 text = """statements := assignment { assignment } ;
-        assignment := VAR STORE expr STOP;
+        assignment := VAR STORE expr STOP [COMMENT];
         expr := term {("+" | "-") term};
         term := factor {("*" | "/") factor};
         factor := INTEGER | VAR | "(" expr ")";
@@ -20,14 +20,15 @@ text = """statements := assignment { assignment } ;
         BINOP := [+\-*/];
         STOP := [\.];
         PARENS := [()];
+        COMMENT := #.*$;
         """
 
 p = Parser(text)
-program = """a <- 2*7+3*4 . 
+program = """a <- 2*7+3*4 . # ignore
 b<-a/2."""
-simple = """x <- 2 - 3 * 4."""
-print(list(p.tokenizer(simple)))
-ok, node, detritus = p.parse_text(simple)
+simple = """x <- 2 - 1."""
+print(list(p.tokenizer(program)))
+ok, node, detritus = p.parse_text(program)
 print_xml(node)
 print(detritus)
 

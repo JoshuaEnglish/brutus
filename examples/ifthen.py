@@ -2,9 +2,9 @@
 """
 Sample if - then statement
 """
-from stackvm import Parser, Coder, BaseMachine
-from stackvm.utils import print_xml
-from stackvm.ebnf import token_lexemes
+from brutus import Parser, Coder, BaseMachine
+from brutus.utils import print_xml
+from brutus.ebnf import token_lexemes
 
 text = """ifstmt := "if" "(" NAME ")" "(" assignment ")" {"else" "(" assignment ")"} ;
         assignment := NAME STORE expr;
