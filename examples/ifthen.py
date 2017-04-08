@@ -26,10 +26,14 @@ else (res <- "false" ) """
 ifonly = """ if (a) (res <- "true") """
 program = ifonly
 
+print("Tokenized Program:")
 print(list(p.tokenizer(program)))
+print()
+
 ok, node, detritus = p.parse_text(program)
+print("Parsed Concrete Syntax Tree:")
 print_xml(node)
-print(detritus)
+print("Detritus:", detritus)
 
 class IfThenCoder(Coder):
     encode_integer = Coder.encode_terminal
@@ -92,10 +96,10 @@ class IfThenCoder(Coder):
 #
 coder = IfThenCoder()
 code = coder.encode(node)
-print("Code:", code)
+print("\nCode:", code)
 
 chooser = BaseMachine('ifthen')
 chooser.feed(code)
-print(chooser.program)
+print("\nProgram:", chooser.program)
 chooser.run(a=1)
-print(chooser.registers)
+print("\nRegisters:", chooser.registers)

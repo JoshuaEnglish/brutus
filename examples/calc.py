@@ -7,10 +7,10 @@ Results from previous lines can be used in later lines.
 The order of operations is implied in how the REBNF is defined.
 """
 from brutus import Parser, Coder, BaseMachine
-from brutus.utils import print_xml
+from brutus.utils import print_xml, print_node
 
 text = """statements := assignment { assignment } ;
-        assignment := VAR STORE expr STOP [COMMENT];
+        assignment := VAR STORE expr STOP;
         expr := term {("+" | "-") term};
         term := factor {("*" | "/") factor};
         factor := INTEGER | VAR | "(" expr ")";
@@ -24,13 +24,29 @@ text = """statements := assignment { assignment } ;
         """
 
 p = Parser(text)
-program = """a <- 2*7+3*4 . # ignore
+print("Parser Tree for statements:")
+print_node(p.rules['statements'])
+
+print("\nParser Tree for assignment:")
+print_node(p.rules['assignment'])
+program = """a <- 2*7+3*4 . 
 b<-a/2."""
-simple = """x <- 2 - 1."""
+simple = """x <- 2 - 1. # comment"""
+
+print("\nProgram:")
+print(program)
+
+print("\nTokens:")
 print(list(p.tokenizer(program)))
-ok, node, detritus = p.parse_text(program)
-print_xml(node)
-print(detritus)
+try:
+    ok, node, detritus = p.parse_text(program)
+    print("\nConcrete Syntax Tree:")
+    print_xml(node)
+    print(detritus)
+except SyntaxError as E:
+    print("\nERROR LOG")
+    p.report()
+    raise E
 
 class MathCoder(Coder):
     encode_integer = Coder.encode_terminal

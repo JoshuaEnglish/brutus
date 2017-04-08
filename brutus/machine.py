@@ -62,7 +62,14 @@ class Namespace(collections.MutableMapping):
         '''echoes class, id, & reproducible representation in the REPL'''
         return '{}, Namespace({})'.format(super(Namespace).__repr__(),
                                           self.__dict__)
-
+    
+    def get(self, key):
+        keylist = key.split('.')
+        if len(keylist) == 1:
+            return self[key]
+        else:
+            return self[keylist[0]].get('.'.join(keylist[1:]))
+                                          
 ### This is the underlying VM
 class VM(object):
     """VM(name,version)
