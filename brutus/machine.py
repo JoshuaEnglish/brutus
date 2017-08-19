@@ -39,9 +39,11 @@ class Namespace(collections.MutableMapping):
     def __init__(self, *args, **kwargs):
         '''Use the object dict'''
         self.__dict__.update(*args, **kwargs)
+
     # The next five methods are requirements of the ABC.
     def __setitem__(self, key, value):
         self.__dict__[key.upper()] = value
+
     def __getitem__(self, key):
         try:
             return self.__dict__[key.upper()]
@@ -50,27 +52,32 @@ class Namespace(collections.MutableMapping):
 
     def __delitem__(self, key):
         del self.__dict__[key.upper()]
+
     def __iter__(self):
         return iter(self.__dict__)
+
     def __len__(self):
         return len(self.__dict__)
+
     # The final two methods aren't required, but nice for demo purposes:
     def __str__(self):
         '''returns simple dict representation of the mapping'''
         return str(self.__dict__)
+
     def __repr__(self):
         '''echoes class, id, & reproducible representation in the REPL'''
         return '{}, Namespace({})'.format(super(Namespace).__repr__(),
                                           self.__dict__)
-    
+
     def get(self, key):
         keylist = key.split('.')
         if len(keylist) == 1:
             return self[key]
         else:
             return self[keylist[0]].get('.'.join(keylist[1:]))
-                                          
-### This is the underlying VM
+
+
+# This is the underlying VM
 class VM(object):
     """VM(name,version)
 
@@ -101,28 +108,27 @@ class VM(object):
         self.stack.clear()
         self.registers = Namespace()
         self.imported_methods = {}
-        #self.allow_new_tokens = True
         self._lexer = VMTokenizer
 
         self._program = []
         self._continue = 1
         self._curline = 0
         self._cycles = 0
-        self._exports = [] ### Used as a library
-        self.history = [] ### history of the stack
-
+        self._exports = []  # Used as a library
+        self.history = []  # history of the stack
 
     def __repr__(self):
         return "<VM '%s' version %0.1f>" % (self.name, self.version)
 
     def add_rule(self, matches, func, caller=None):
         """add_rule(matches, func, [caller])
-        The first item is a list of string objects which can be used to call the method,
-        which is determined by the first string. 
-        caller should be none or a callable object
+        The first item is a list of string objects which can be used to call
+        the method, which is determined by the first string.
+
+        Caller should be none or a callable object
         """
         LOG.debug("Adding rules for: %s", matches)
-        ### Make sure matches are valid
+        # Make sure matches are valid
         if not isinstance(matches, (list, tuple)):
             raise ValueError("Matches must be list or tuple")
 
@@ -137,7 +143,7 @@ class VM(object):
 
         matches = [s.upper() for s in matches]
 
-        ### Make sure func is valid
+        # Make sure func is valid
         if not isinstance(func, str):
             raise ValueError("Cannot convert function name to string")
         func = func.strip()
@@ -146,10 +152,10 @@ class VM(object):
         if func.split()[0] != func:
             raise ValueError("Function cannot contain white space")
 
-        ### Make sure that caller is valid (if there)
+        # Make sure that caller is valid (if there)
         if caller and not isinstance(caller, collections.Callable):
             raise ValueError('Caller must be string or callable')
-        ### Add the matches to
+        # Add the matches to
         self.reservedwords.extend(matches)
         self.rules.append((matches, func, caller))
 
@@ -158,7 +164,7 @@ class VM(object):
         for key, val in kw.items():
             self.registers[key] = val
 
-    ### Basic functions
+    # Basic functions
     def do_binary_op(self, op):
         """do_binary_op
         Basic function that pops two items from the stack, performs a binary
@@ -228,12 +234,11 @@ class VM(object):
             self.imported_methods[func] = handler
             self.add_rule(match, func, caller)
 
-    ### Begin Compiler Portion ###
+    # Begin Compiler Portion ###
     @property
     def program(self):
         """Returns the compiled program"""
         return self._program
-
 
     def feed(self, text):
         """feed(text)
@@ -267,10 +272,9 @@ class VM(object):
         self._program = tuple(labeld)
         self.reset()
 
-    ### END Compiler Portion
+    # END Compiler Portion
 
-    ### START Runner Portion
-
+    # START Runner Portion
     def reset(self):
         """resets the program but leaves the registers alone"""
         self._continue = 1
@@ -278,7 +282,6 @@ class VM(object):
         self._cycles = 0
         self.stack.clear()
         self.history = []
-        #self.registers.clear()
 
     def run(self, **registers):
         """run through the program. can provide keyword arguments"""
@@ -323,7 +326,7 @@ class VM(object):
                     handler = proc
                     break
 
-            LOG.debug(" Handler: %s with pasself %s", handler, passself)
+            # LOG.debug(" Handler: %s with pasself %s", handler, passself)
 
             if handler and passself:
                 handler(caller, self)
@@ -346,7 +349,6 @@ class VM(object):
             else:
                 self.stack.push(current_command)
 
-
     def terminate(self, caller):
         """terminates the program"""
         self._continue = 0
@@ -354,8 +356,6 @@ class VM(object):
     def go_to_instruction(self, line):
         """sets the current instruction number"""
         self._curline = int(line)
-
-
 
 
 class BaseMachine(VM):
@@ -372,12 +372,12 @@ class BaseMachine(VM):
         self.add_binary_rule(['mod', '%'], OP.mod)
         self.add_binary_rule(['or', '|'], OP.or_)
         self.add_binary_rule(['pow', '^'], OP.pow)
-        self.add_binary_rule(['xor',], OP.xor)
+        self.add_binary_rule(['xor', ], OP.xor)
 
-        self.add_binary_rule(['max',], max)
-        self.add_binary_rule(['min',], min)
+        self.add_binary_rule(['max', ], max)
+        self.add_binary_rule(['min', ], min)
 
-        #~ Comparisons
+        # Comparisons
         self.add_binary_rule(['lessthan', 'lt', '<'], OP.lt)
         self.add_binary_rule(['lte', 'le', '<='], OP.le)
         self.add_binary_rule(['eq', '=='], OP.eq)
@@ -385,17 +385,29 @@ class BaseMachine(VM):
         self.add_binary_rule(['greaterthan', 'gt', '>'], OP.gt)
         self.add_binary_rule(['gte', '>='], OP.ge)
 
-        #~ Unary ops
+        # Unary ops
         self.add_unary_rule(['abs'], OP.abs)
         self.add_unary_rule(['neg', '~'], OP.neg)
         self.add_unary_rule(['not'], OP.not_)
 
+        # Stack Manipulation
+        self.add_rule(['drop', ], "do_drop")
+        self.add_rule(['dup', ], "do_dup")
+
         self.import_library(ControlOperationsLibrary)
+
+    def do_drop(self, thing):
+        """drops the top item on the stack"""
+        self.stack.pop()
+
+    def do_dup(self, thing):
+        """duplicates the top item on the stack"""
+        self.stack.push(self.stack.top())
+
 
 if __name__ == '__main__':
     TL = BaseMachine('Test', '0.0')
 
-    #TL.set_register(mylife=2)
     TL.feed(""" # very simple choice, attack or run if too weak
 
             mylife 5 < do_run if
@@ -408,4 +420,3 @@ if __name__ == '__main__':
     TL.run(mylife=16)
     print(TL.registers)
     print(TL.stack)
-
