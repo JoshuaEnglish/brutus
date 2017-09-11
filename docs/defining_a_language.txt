@@ -75,8 +75,8 @@ After running this program the machine's registers will be a dictionary::
 The REBNF
 =========
 
-|REBNF| uses :abbr:`EBNF (Extended Backus-Naur Form)` to define non-terminal symbols and 
-regular expressions to define terminal symbols.
+|REBNF| uses :abbr:`EBNF (Extended Backus-Naur Form)` to define non-terminal
+symbols and regular expressions to define terminal symbols.
 
 Our |REBNF| looks like this::
 

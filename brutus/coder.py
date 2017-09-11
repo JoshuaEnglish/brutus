@@ -11,19 +11,19 @@ class Coder(object):
     """Code generation tool. For each token in the concrete syntax tree,
     declare a method ``encode_nnn`` where `nnn` is the name of the token's
     symbol.
-    
+
     Several ``handle_xxx`` methods exist as shortcuts.
-    
+
     Use these to define your own class::
-        
+
         class MathCoder(Coder):
             encode_integer = Coder.encode_terminal
             encode_binop = Coder.handle_terminal
             encode_parens = Coder.do_nothing
-            
+
         mycoder = MathCoder()
         code = mycode.encode(parsed_cst_node)
-    
+
     """
 
     def __init__(self):
@@ -33,13 +33,13 @@ class Coder(object):
 
     def make_label(self, name):
         """Returns a new label in a sequence.
-        
+
         Save the results of this call to use later.
-        
+
         Sample:
             self.make_label('subroutine') -> 'subroutine_0'
             self.make_label('subroutine') -> 'subroutine_1'
-            
+
         Please see examples\ifthen.py for an example of this method's use.
 
         """

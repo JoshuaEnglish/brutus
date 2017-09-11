@@ -9,8 +9,9 @@ Stackvm is a simple stack-based virtual machine. It consists of four components:
 	#. The program (a tuple of strings)
 	#. The counter (the instruction index)
 
-Out of the box, the :class:`VM` class only supports one rule: **end**. This is used to stop
-the processing of the program and can appear any number of times in a program.
+Out of the box, the :class:`VM` class only supports one rule: **end**. This is
+used to stop the processing of the program and can appear any number of times
+in a program.
 
 
 The Machine as Calculator
@@ -31,13 +32,15 @@ Here is a simple example:
    >>> print(vm.registers)
   {}
 
-What happened? The :meth:`~VM.feed` method tokenizes the string into a list of tokens.
-The :meth:`~VM.run` method steps through the tokens, adding each one to the stack and following
-any rules indicated by the token. In the above example, **plus** seems like it should
-pop the top two items from the stack and push the results onto the stack.
+What happened? The :meth:`~VM.feed` method tokenizes the string into a list of
+tokens.  The :meth:`~VM.run` method steps through the tokens, adding each one
+to the stack and following any rules indicated by the token. In the above
+example, **plus** seems like it should pop the top two items from the stack and
+push the results onto the stack.
 
-This didn't happen because the :class:`VM` class only supports the **end** rule. The 
-:class:`~library.FiveFunctionLibrary` provides the basic arithemetical functions:
+This didn't happen because the :class:`VM` class only supports the **end**
+rule. The :class:`~library.FiveFunctionLibrary` provides the basic
+arithemetical functions:
 
 .. code-block:: python
 
@@ -70,19 +73,16 @@ multiplication, division, and modulo division.
 Using Registers
 ===============
 
-The machine can store and retrieve data from a register. The register
-behaves like a regular Python dictionary, only the keys are changed 
-internally as upper case. 
+The machine can store and retrieve data from a register. The register behaves
+like a regular Python dictionary, only the keys are changed internally as upper
+case. This means keys are functionally case-insensitive.
 
-Write to a register using the register
-name with an apostrophe (``'``) at the end. This removes the value
-written from the stack.
+Write to a register using the register name with an apostrophe (``'``) at the
+end. This removes the value written from the stack.
 
-Read from a register 
-by using the name. Reading from a register is automatic. If the 
-register has the key, the value is added to the stack. If the 
-register does not have the name as a key, then the name is 
-written to the stack.
+Read from a register by using the name. Reading from a register is automatic.
+If the register has the key, the value is added to the stack. If the register
+does not have the name as a key, then the name is written to the stack.
 
 .. code-block:: python
 
