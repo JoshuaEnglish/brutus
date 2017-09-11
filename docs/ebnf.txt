@@ -2,7 +2,7 @@
 ebnf.py
 ===============
 
-.. module:: stackvm.ebnf
+.. module:: brutus.ebnf
 
 .. autoclass:: EBNFNode
     :members:

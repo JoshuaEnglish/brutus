@@ -2,5 +2,5 @@
 utils.py
 ========
 
-.. automodule:: stackvm.utils
+.. automodule:: brutus.utils
     :members:

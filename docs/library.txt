@@ -2,5 +2,5 @@
 library.py
 ==========
 
-.. automodule:: stackvm.library
+.. automodule:: brutus.library
     :members:

@@ -2,7 +2,7 @@
 coder.py
 ========
 
-.. module:: stackvm.coder
+.. module:: brutus.coder
 
 The :class:`Coder` object translates :class:`CSTNode` objects into code 
 for the :class:`Machine`.
