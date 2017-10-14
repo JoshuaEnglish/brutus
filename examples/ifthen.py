@@ -24,7 +24,7 @@ ifelse = """if (a) (res <- "true")
 else (res <- "false" ) """
 
 ifonly = """ if (a) (res <- "true") """
-program = ifonly
+program = ifelse
 
 print("Tokenized Program:")
 print(list(p.tokenizer(program)))
@@ -34,6 +34,7 @@ ok, node, detritus = p.parse_text(program)
 print("Parsed Concrete Syntax Tree:")
 print_xml(node)
 print("Detritus:", detritus)
+
 
 class IfThenCoder(Coder):
     encode_integer = Coder.encode_terminal
@@ -63,13 +64,13 @@ class IfThenCoder(Coder):
 
             endif = self.make_label('if')
 
-            self.handle_node(node.children[2]) # name
+            self.handle_node(node.children[2])  # name
             self.code.append('not')
             self.code.append(endif)
 
             self.code.append('if')
 
-            self.handle_node(node.children[5]) # if true clause
+            self.handle_node(node.children[5])  # if true clause
             self.code.append('{}:'.format(endif))
         else:
             # we've got an ife statemnt
@@ -92,8 +93,6 @@ class IfThenCoder(Coder):
             self.code.append('{}:'.format(endif))
 
 
-
-#
 coder = IfThenCoder()
 code = coder.encode(node)
 print("\nCode:", code)
@@ -102,4 +101,6 @@ chooser = BaseMachine('ifthen')
 chooser.feed(code)
 print("\nProgram:", chooser.program)
 chooser.run(a=1)
+print("\nRegisters:", chooser.registers)
+chooser.run(a=0)
 print("\nRegisters:", chooser.registers)

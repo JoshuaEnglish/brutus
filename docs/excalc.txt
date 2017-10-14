@@ -7,24 +7,30 @@ Calculator Example
 
    self
    
-This example shows how to create a simple multi-line four function calculator DSL.
+This example shows how to create a simple multi-line four function calculator
+DSL.
 
 .. literalinclude:: ../examples/calc.py
     :end-before: program =
-    
+    :linenos:
+    :lineno-match:
 
 The Parser takes our |REBNF| text and now can read a program.
 
 .. literalinclude:: ../examples/calc.py
-    :start-after: p = Parser(text)
+    :start-after: program =
     :end-before: class MathCoder
+    :linenos:
+    :lineno-match:
     
     
 This example can process either a two-line program or a one-line program.
 
 .. literalinclude:: ../examples/calc.py
-    :start-after: print(detritus)
+    :start-after: raise E
     :end-before: mather =
+    :linenos:
+    :lineno-match:
     
     
 This part of the code creates the :class:`Coder` object, using several
@@ -33,6 +39,8 @@ token we need to deal with specifically is the assignment node.
 
 .. literalinclude:: ../examples/calc.py
     :start-after: print("Code:"
+    :linenos:
+    :lineno-match:
     
     
 The last step creates a :class:`BaseMachine` instance, feeds in the generated

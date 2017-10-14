@@ -93,7 +93,7 @@ class EBNFNode(object):
         """returns a code describing the node."""
         if self.children:
             res = []
-            if self.repeating: 
+            if self.repeating:
                 res.append('r')
             if self.optional:
                 res.append('o')
@@ -104,7 +104,7 @@ class EBNFNode(object):
             return ''.join(res) if res else 's'
         else:
             return 't'
-        
+
     def __str__(self):
         if len(self.children) > 1:
             flags = ["alternate" if self.alternate else "",
@@ -120,8 +120,8 @@ class EBNFNode(object):
 
     __repr__ = __str__
 
-    
-    
+
+
 class EBNFToken(Token):
     pass
 
@@ -136,7 +136,7 @@ def make_parser_node(name, tokens, endtoken=None):
     """make_parser_node(name, tokens [,endtoken])
     Recursive method for taking a series of tokens representing one EBNF
     rule and returning a EBNFNode tree.
-    
+
     This function is called by :class:`EBNFParser` automatically.
     """
     if not tokens:
@@ -206,7 +206,7 @@ def make_parser_node(name, tokens, endtoken=None):
     return this, tokens
 
 class CSTNode(object):
-    """Concrete Syntax Tree Node. 
+    """Concrete Syntax Tree Node.
     This node holds a token and a list of children for that token.
     """
     def __init__(self, token):
@@ -280,7 +280,7 @@ class EBNFParser(object):
                 raise SyntaxError('rule for %s already exists' % key)
             ebnf_tokens = list(EBNFTokenizer(val))
             #ebnf_tokens = [kept_tokens.setdefault(token.lexeme, token) for token in ebnf_tokens]
-                           
+
 
             for token in ebnf_tokens:
                 if token.symbol == EBNFTokenizer.symbols['TERM']:
@@ -299,7 +299,7 @@ class EBNFParser(object):
                 self.tokenizer.symbols[key] = QTerminal(key)
                 self.tokenizer.add_lexer(val.strip(), key)
                 self.symbol_table[key] = EBNFTerminalSymbol(key)
-        
+
         self.kept_tokens = kept_tokens
         logging.debug("EBNFParser.__init__() end")
 
@@ -319,7 +319,7 @@ class EBNFParser(object):
 
     def parse_text(self, text):
         """parse_text(text)
-        
+
         Parse the DSL text and return a CSTNode plus any uncoverted tokens
         """
         self._report_list = []
@@ -365,9 +365,9 @@ class EBNFParser(object):
         """match(parser_node, tokens [,i])
         Call either match_terminal or match_nonterminal if the parser_node's
         token is terminal or not.
-        
+
         :return: tuple of (boolean, CSTNode or None, list)
-        
+
         """
         self._report(i,
                      "m:match '%s' against '%s' with %d remaining" % (parser_node.token.lexeme,
@@ -504,7 +504,7 @@ class EBNFParser(object):
         alternates = split_by_or(parser_node.children)
 
         node = CSTNode(parser_node.token)
-      
+
         for alternate in alternates:
             preview = tokens[0] if tokens else "No tokens"
             logging.debug("trying alternate: %s against %s",

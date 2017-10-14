@@ -24,9 +24,9 @@ class VMLibrary:
 
     def add_export(self, matches, func, caller=None):
         """add_export(list, string, [string])
-        The first item is a list of string objects which can be used to call the method,
-        which is determined by the first string. The optional second string is passed
-        to the method when called.
+        The first item is a list of string objects which can be used to call the
+        method, which is determined by the first string. The optional second
+        string is passed to the method when called.
 
         This method follows the same rules as the VM.add_rule method.
         """
@@ -45,7 +45,7 @@ class VMLibrary:
 
         matches = [m.upper() for m in matches]
 
-        ### Make sure func is valid
+        # Make sure func is valid
         if not isinstance(func, str):
             raise ValueError("Cannot convert function name to string")
         func = func.strip()
@@ -54,7 +54,7 @@ class VMLibrary:
         if func.split()[0] != func:
             raise ValueError("Function cannot contain white space")
 
-        ### Make sure that caller is valid (if there)
+        # Make sure that caller is valid (if there)
         if caller:
             if not isinstance(caller, (str, collections.Callable)):
                 raise ValueError("Caller must be a string or callable")
@@ -63,7 +63,7 @@ class VMLibrary:
                 if caller.split()[0] != caller:
                     raise ValueError("Caller cannot contain whitespace")
 
-        ### Add the matches to
+        # Add the matches to
         self.reserved_words.extend(matches)
         self.exports.append((matches, func, caller))
 
@@ -71,10 +71,9 @@ class VMLibrary:
         """Returns a list of method names that are available from this library"""
         res = []
         for match, func, caller in self.exports:
-            if func not in res: 
+            if func not in res:
                 res.append(func)
         return res
-
 
 
 class FiveFunctionLibrary(VMLibrary):
@@ -114,7 +113,6 @@ class FiveFunctionLibrary(VMLibrary):
 
         res = op(left, right)
         parent.stack.push(res)
-
 
 
 class ComparisonsLibrary(VMLibrary):
@@ -191,7 +189,7 @@ class ControlOperationsLibrary(VMLibrary):
             raise ValueError("Possibly missing label: %s" % line1)
         if isinstance(line2, str) and not line2.isdigit():
             raise ValueError("Possibly missing label: %s" % line2)
-        if value:
+        if bool(float(value)):
             parent.go_to_instruction(int(line2))
         else:
             parent.go_to_instruction(int(line1))

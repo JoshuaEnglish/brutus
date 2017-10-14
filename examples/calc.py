@@ -29,7 +29,7 @@ print_node(p.rules['statements'])
 
 print("\nParser Tree for assignment:")
 print_node(p.rules['assignment'])
-program = """a <- 2*7+3*4 . 
+program = """a <- 2*7+3*4 .
 b<-a/2."""
 simple = """x <- 2 - 1. # comment"""
 
@@ -48,9 +48,10 @@ except SyntaxError as E:
     p.report()
     raise E
 
+
 class MathCoder(Coder):
     encode_integer = Coder.encode_terminal
-    
+
     encode_binop = Coder.handle_terminal
     encode_parens = Coder.do_nothing
     encode_var = Coder.handle_terminal
@@ -60,7 +61,6 @@ class MathCoder(Coder):
     encode_term = Coder.handle_binary_node
 
     def encode_assignment(self, node):
-        #print("assignment", node, token_lexemes(node.children))
         variable, op, stuff, stop = node.children
         self.handle_node(stuff)
         self.code.append("{}'".format(variable.token.lexeme))
