@@ -145,11 +145,11 @@ class ComparisonsLibrary(VMLibrary):
             raise IndexError("Cannot pop two items for %s operator" % op)
         try:
             a = int(a)
-        except:
+        except ValueError:
             raise ValueError("%s not valid input for %s" % (a, op))
         try:
             b = int(b)
-        except:
+        except ValueError:
             raise ValueError("%s not valid input for %s" % (b, op))
 
         opstring = '%s %s %s' % (b, op, a)
@@ -170,8 +170,8 @@ class ControlOperationsLibrary(VMLibrary):
     def __init__(self):
         VMLibrary.__init__(self, "ControlOperationsLibrary", 0.1)
 
-        self.add_export(['if',], 'do_if_control')
-        self.add_export(['ife',], 'do_ife_control')
+        self.add_export(['if', ], 'do_if_control')
+        self.add_export(['ife', ], 'do_ife_control')
         self.add_export(['jump', 'goto'], 'do_jump_control')
 
     def do_if_control(self, caller, parent):
@@ -184,12 +184,12 @@ class ControlOperationsLibrary(VMLibrary):
 
     def do_ife_control(self, caller, parent):
         "cond if_true_line if_false_line ife"
-        line1, line2, value = parent.stack.pop(), parent.stack.pop(), parent.stack.pop()
+        line1, line2, cond = parent.stack.pop(), parent.stack.pop(), parent.stack.pop()
         if isinstance(line1, str) and not line1.isdigit():
             raise ValueError("Possibly missing label: %s" % line1)
         if isinstance(line2, str) and not line2.isdigit():
             raise ValueError("Possibly missing label: %s" % line2)
-        if bool(float(value)):
+        if bool(float(cond)):
             parent.go_to_instruction(int(line2))
         else:
             parent.go_to_instruction(int(line1))

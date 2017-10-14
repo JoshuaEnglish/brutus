@@ -14,6 +14,7 @@ from .tokenizer import Tokenizer
 __version__ = "4.0"
 
 LOG = logging.getLogger('STACKVM')
+LOG.addHandler(logging.NullHandler())
 
 
 VMTokenizer = Tokenizer('')
@@ -225,7 +226,7 @@ class VM(object):
         for match, func, caller in lib.exports:
             try:
                 handler = getattr(lib, func)
-            except:
+            except AttributeError:
                 raise RuntimeError("Library missing %s method" % (func))
 
             if (func in self.imported_methods) and func not in newmethods:
@@ -285,6 +286,7 @@ class VM(object):
 
     def run(self, **registers):
         """run through the program. can provide keyword arguments"""
+        self.reset()
         if registers:
             self.set_register(**registers)
 
@@ -321,7 +323,7 @@ class VM(object):
                         try:
                             proc = self.imported_methods[func]
                             passself = 1
-                        except:
+                        except KeyError:
                             raise ValueError("Missing %s Method" % func)
                     handler = proc
                     break

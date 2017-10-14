@@ -42,11 +42,28 @@ class BaseLanguageTest(unittest.TestCase):
         bm.feed('3 dup end')
         bm.run()
         self.assertListEqual(bm.stack.items, [3, 3])
+        bm.feed('a dup end')
+        bm.run()
+        self.assertListEqual(bm.stack.items, ['a', 'a'])
 
     def test_drop(self):
         bm = brutus.machine.BaseMachine('simpleton', 0)
         bm.feed('1 2 drop end')
         bm.run()
         self.assertListEqual(bm.stack.items, [1, ])
+
+    def test_ife(self):
+        bm = brutus.machine.BaseMachine('simpleton', 0)
+        bm.feed('''1 4 8 ife "true" res' 10 jump "false" res' END''')
+        bm.run()
+        self.assertEqual(bm.registers.get('RES'),  '"true"')
+
+    def test_ife_again(self):
+        bm = brutus.machine.BaseMachine('simpleton', 0)
+        bm.feed('''0 4 8 ife "true" res' 10 jump "false" res' END''')
+        bm.run()
+        self.assertEqual(bm.registers.get('RES'),  '"false"')
+
+
 if __name__ == '__main__':
     unittest.main()

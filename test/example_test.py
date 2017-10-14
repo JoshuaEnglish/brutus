@@ -1,41 +1,6 @@
-# -*- coding: utf-8 -*-
-"""
-Sample if - then statement
-"""
-import logging
+import unittest
 
 from brutus import Parser, Coder, BaseMachine
-from brutus.utils import print_xml
-from brutus.ebnf import token_lexemes
-
-text = """ifstmt := "if" "(" NAME ")" "(" assignment ")" {"else" "(" assignment ")"} ;
-        assignment := NAME STORE expr;
-        expr := term {("+" | "-") term};
-        term := factor {("*" | "/") factor};
-        factor := INTEGER | NAME | LITERAL | "(" expr ")";
-        NAME := [a-z]+;
-        INTEGER := -?[0-9]+;
-        STORE := <-;
-        OP := [+\-*/];
-        PARENS := [()];
-        """
-
-p = Parser(text)
-
-ifelse = """if (a) (res <- true)
-else (res <- "false" ) """
-
-ifonly = """ if (a) (res <- a) """
-program = ifonly
-
-print("Tokenized Program:")
-print(list(p.tokenizer(program)))
-print()
-
-ok, node, detritus = p.parse_text(program)
-print("Parsed Concrete Syntax Tree:")
-print_xml(node)
-print("Detritus:", detritus)
 
 
 class IfThenCoder(Coder):
@@ -51,13 +16,11 @@ class IfThenCoder(Coder):
     encode_term = Coder.handle_binary_node
 
     def encode_assignment(self, node):
-        print("assignment", node, token_lexemes(node.children))
         variable, op, stuff = node.children
         self.handle_node(stuff)
         self.code.append("{}'".format(variable.token.lexeme))
 
     def encode_ifstmt(self, node):
-        print("ifstmt", node, token_lexemes(node.children))
         # target comp if
         # target else comp ife
         if 'else' not in (t.token.lexeme for t in node.children):
@@ -93,19 +56,47 @@ class IfThenCoder(Coder):
             self.code.append('{}:'.format(endif))
 
 
-coder = IfThenCoder()
-code = coder.encode(node)
-print("\nCode:", code)
+class IfThenExample(unittest.TestCase):
+    text = """ifstmt := "if" "(" NAME ")" "(" assignment ")" {"else" "(" assignment ")"} ;
+            assignment := NAME STORE expr;
+            expr := term {("+" | "-") term};
+            term := factor {("*" | "/") factor};
+            factor := INTEGER | NAME | LITERAL | "(" expr ")";
+            NAME := [a-z]+;
+            INTEGER := -?[0-9]+;
+            STORE := <-;
+            OP := [+\-*/];
+            PARENS := [()];
+            """
 
-chooser = BaseMachine('ifthen')
-chooser.feed(code)
-print("\nProgram:", chooser.program)
-log = logging.getLogger('STACKVM')
-# log.setLevel(logging.DEBUG)
-# log.addHandler(logging.StreamHandler())
+    p = Parser(text)
+    coder = IfThenCoder()
 
-chooser.run(a=1)
-print("\nRegisters:", chooser.registers)
-chooser.run(a=0)
-print("\nRegisters:", chooser.registers)
-print("\nStack:", chooser.stack)
+    def test_ifonly(self):
+        ok, node, detritus = self.p.parse_text('if (a) (res <- "marmalade")')
+        self.assertTrue(ok)
+        self.assertListEqual(detritus, [])
+        code = self.coder.encode(node)
+        chooser = BaseMachine('ifonly')
+        chooser.feed(code)
+        chooser.run(a=1, res="blankenship")
+        self.assertEqual(chooser.registers['res'], '"marmalade"')
+        chooser.run(a=0, res="blankenship")
+        self.assertEqual(chooser.registers['res'], '"blankenship"')
+
+    def test_ifelse(self):
+        ok, node, detritus = self.p.parse_text(
+            """if (a) (res <- "marmalade") else (res <- "blankenship")""")
+        self.assertTrue(ok)
+        self.assertListEqual(detritus, [])
+        code = self.coder.encode(node)
+        chooser = BaseMachine('ifthen')
+        chooser.feed(code)
+        chooser.run(a=1, res="python")
+        self.assertEqual(chooser.registers['res'], '"marmalade"')
+        chooser.run(a=0, res="python")
+        self.assertEqual(chooser.registers['res'], '"blankenship"')
+
+
+if __name__ == '__main__':
+    unittest.main()

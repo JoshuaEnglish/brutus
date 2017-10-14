@@ -65,10 +65,11 @@ multiplication, division, and modulo division.
 
 .. note::
 	
-   :meth:`~VM.feed` calls the :meth:`~VM.reset` method for you,
-   so this is fine to do. You only need to call :meth:`~VM.reset`
-   when you aren't changing the program but re-running it through
-   the machine.
+   :meth:`~VM.feed` calls the :meth:`~VM.reset` method for you, so this is fine
+   to do. You only need to call :meth:`~VM.reset` when you aren't changing the
+   program but re-running it through the machine. However, if you are only
+   changing register values in a new `run` command, you do need to call
+   `reset()` 
 
 Using Registers
 ===============
