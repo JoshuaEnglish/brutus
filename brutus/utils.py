@@ -11,7 +11,7 @@ from itertools import islice, cycle
 DOTS = " .  "
 
 
-def indent(length):
+def indent (length):
     """indent(length)
     Return a string of length ``length`` with dot characters spaced into
     columns. This is used in printing tree structures

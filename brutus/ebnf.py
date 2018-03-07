@@ -2,7 +2,7 @@
 """
 ebnf.py
 
-Parses REBNF text into Concrete Syntax Tree Nodes.
+Parses DSL text into Concrete Syntax Tree Nodes via REBNF rules.
 
 """
 
@@ -11,7 +11,7 @@ from collections import OrderedDict, Counter
 from itertools import groupby
 
 from .tokenizer import Symbol, Token, Tokenizer, QTerminal
-from .utils import indent, print_xml
+from .utils import indent
 
 
 class EBNFTerminalSymbol(Symbol):
@@ -49,6 +49,9 @@ STARTGROUP = EBNFTokenizer.symbols['STARTGROUP']
 ENDGROUP = EBNFTokenizer.symbols['ENDGROUP']
 STARTOPTION = EBNFTokenizer.symbols['STARTOPTIONAL']
 ENDOPTION = EBNFTokenizer.symbols['ENDOPTIONAL']
+STARTATL = EBNFTokenizer.symbols['STARTATL']
+ENDATL = EBNFTokenizer.symbols['ENDATL']
+
 OR = EBNFTokenizer.symbols['OR']
 LITERAL = EBNFTokenizer.symbols['LITERAL']
 RULE = EBNFTokenizer.symbols['RULE']
@@ -73,21 +76,27 @@ class EBNFNode(object):
     def __init__(self, token):
         self.token = token
         self.children = []
-        self.alternate = False
-        self.optional = False
-        self.repeating = False
-        self.oneormore = False
+
+    @property
+    def alternate(self):
+        return self.token.symbol == ALTERNATING
+
+    @property
+    def optional(self):
+        return self.token.symbol == OPTIONAL
+
+    @property
+    def repeating(self):
+        return self.token.symbol == REPEATING
+
+    @property
+    def oneormore(self):
+        return self.token.symbol == ATLEASTONCE
 
     def add(self, thing):
         """add a node to this node's children"""
         assert isinstance(thing, EBNFNode)
         self.children.append(thing)
-
-    def guess_symbol_class(self):
-        """returns EBNFTerminalSymbol or EBNFNonTerminalSymbol"""
-        is_term = all(kid.token.symbol in [OR, LITERAL]
-                      for kid in self.children)
-        return EBNFTerminalSymbol if is_term else EBNFNonTerminalSymbol
 
     @property
     def key(self):
@@ -95,29 +104,20 @@ class EBNFNode(object):
         if self.children:
             res = []
             if self.repeating:
-                res.append('r')
+                res.append('rep')
             if self.optional:
-                res.append('o')
+                res.append('opt')
             if self.oneormore:
-                res.append('l')
+                res.append('atl')
             if self.alternate:
-                res.append('a')
-            return ''.join(res) if res else 's'
+                res.append('alt')
+            return ''.join(res) if res else 'seq'
         else:
-            return 't'
+            return 'trm'
 
     def __str__(self):
-        if len(self.children) > 1:
-            flags = ["alternate" if self.alternate else "",
-                     "optional" if self.optional else "",
-                     "repeating" if self.repeating else ""]
-            if any(flags):
-                flagstr = ", ".join(f for f in flags if f)
-            else:
-                flagstr = "sequence"
-        else:
-            flagstr = ""
-        return "<EBNFNode {} {}>".format(self.token, flagstr)
+        return "{} <{}:{}>".format(self.__class__.__name__,
+                                   self.key, self.token.lexeme)
 
     __repr__ = __str__
 
@@ -126,13 +126,16 @@ class EBNFToken(Token):
     pass
 
 
-groupcount = Counter()
-SEQ_MAP = {STARTGROUP: SEQUENCE, STARTREPEAT: REPEATING, STARTOPTION: OPTIONAL}
+SEQ_MAP = {STARTGROUP: SEQUENCE, STARTREPEAT: REPEATING,
+           STARTOPTION: OPTIONAL, STARTATL: ATLEASTONCE}
 SUFFIX_MAP = {REP: REPEATING, OPT: OPTIONAL, ATL: ATLEASTONCE}
 
 groupings = {STARTGROUP: ENDGROUP,
              STARTREPEAT: ENDREPEAT,
-             STARTOPTION: ENDOPTION}
+             STARTOPTION: ENDOPTION,
+             STARTATL: ENDATL}
+
+groupcount = Counter()
 
 
 def make_parser_node(name, tokens, endtoken=None):
@@ -145,14 +148,15 @@ def make_parser_node(name, tokens, endtoken=None):
     if not tokens:
         return None, []
     logging.debug("make_parser_node for '%s' with %d tokens", name, len(tokens))
+
     this = EBNFNode(EBNFToken(SEQUENCE, name))
-    logging.debug("this is %d", id(this))
+    logging.debug("this is %x", id(this))
 
     while tokens:
         first = tokens[0]
 
-        if first.symbol in [STARTGROUP, STARTREPEAT, STARTOPTION]:
-            logging.debug("found %s in %d", first.symbol.name, id(this))
+        if first.symbol in [STARTGROUP, STARTREPEAT, STARTOPTION, STARTATL]:
+            logging.debug("found %s in %x", first.symbol.name, id(this))
             key = name.split('-')[0]
             groupcount[key] += 1
             child, tokens = make_parser_node("%s-%d" % (key, groupcount[key]),
@@ -160,16 +164,10 @@ def make_parser_node(name, tokens, endtoken=None):
                                              groupings[first.symbol])
             if child:
                 child.token.symbol = SEQ_MAP[first.symbol]
-                if child.token.symbol == REPEATING:
-                    child.repeating = True
-                if child.token.symbol == OPTIONAL:
-                    child.optional = True
-                if child.token.symbol == ATLEASTONCE:
-                    child.oneormore = True
                 this.add(child)
 
-        elif first.symbol in [ENDGROUP, ENDREPEAT, ENDOPTION]:
-            logging.debug("Found %s with %d tokens left in %d",
+        elif first.symbol in [ENDGROUP, ENDREPEAT, ENDOPTION, ENDATL]:
+            logging.debug("Found %s with %d tokens left in %x",
                           first.symbol.name, len(tokens), id(this))
             if endtoken != first.symbol:
                 raise SyntaxError("Expected %s to close group, got %s" %
@@ -185,7 +183,7 @@ def make_parser_node(name, tokens, endtoken=None):
 
                 if tokens[1].symbol in [REP, OPT, ATL]:
                     this.token.symbol = SUFFIX_MAP[tokens[1].symbol]
-                    logging.debug("Changed %d to symbol %s",
+                    logging.debug("Changed %x to symbol %s",
                                   id(this), this.token.symbol)
                     tokens.pop(0)
 
@@ -194,9 +192,9 @@ def make_parser_node(name, tokens, endtoken=None):
         elif first.symbol == OR:
             logging.debug("Found or in %d with symbol %s",
                           id(this), this.token.symbol)
-            this.alternate = True
+            # this.alternate = True
             this.token.symbol = ALTERNATING
-            logging.debug("Changed %d to symbol %s",
+            logging.debug("Changed %x to symbol %s",
                           id(this), this.token.symbol)
             this.add(EBNFNode(first))
             tokens.pop(0)
@@ -205,7 +203,7 @@ def make_parser_node(name, tokens, endtoken=None):
             this.add(EBNFNode(first))
             tokens.pop(0)
 
-    logging.debug("Returning %d with %d tokens", id(this), len(tokens))
+    logging.debug("Returning %x with %d tokens", id(this), len(tokens))
     return this, tokens
 
 
@@ -247,7 +245,8 @@ def split_by_or(iterable):
 
 __logic__ = """
 match_sequence(list_of_expected_nodes, list_of_tokens)
-    returns a (list_of_CSTNodes, list_of_remaining_tokens) or ([], list_of_tokens)
+    returns a (list_of_CSTNodes, list_of_remaining_tokens) or
+    ([], list_of_tokens)
 
 match_terminal(expected_node, list_of_tokens)
 
@@ -288,14 +287,14 @@ class EBNFParser(object):
                     self.start_rule = key
             if key in self.symbol_table:
                 raise SyntaxError('rule for %s already exists' % key)
-            ebnf_tokens = list(EBNFTokenizer(val))
+            # ebnf_tokens = list(EBNFTokenizer(val))
 
-
-            for token in ebnf_tokens:
-                if token.symbol == EBNFTokenizer.symbols['TERM']:
-                    if token.lexeme not in self.tokenizer.symbols:
-                        self.tokenizer.symbols[token.lexeme] = None
+            # for token in ebnf_tokens:
+            #     if token.symbol == EBNFTokenizer.symbols['TERM']:
+            #        if token.lexeme not in self.tokenizer.symbols:
+            #             self.tokenizer.symbols[token.lexeme] = None
             if key.islower():
+                ebnf_tokens = list(EBNFTokenizer(val))
                 parser_node, remaining = make_parser_node(key, ebnf_tokens)
                 if remaining:
                     logging.exception("rule %s did not process correctly", key)
@@ -304,7 +303,8 @@ class EBNFParser(object):
                 self.symbol_table[key] = EBNFNonTerminalSymbol(key)
             elif key.isupper():
                 if self.tokenizer.symbols.get(key) is not None:
-                    raise ValueError("Redefining terminal symbol %s in EBNF" % key)
+                    raise ValueError(
+                            "Redefining terminal symbol %s in EBNF" % key)
                 self.tokenizer.symbols[key] = QTerminal(key)
                 self.tokenizer.add_lexer(val.strip(), key)
                 self.symbol_table[key] = EBNFTerminalSymbol(key)
@@ -363,7 +363,6 @@ class EBNFParser(object):
         if not isinstance(parser_node.token, EBNFToken):
             raise ValueError("parser node missing required EBNFToken")
 
-
         ok, node, tokens = self.match(parser_node, tokens, i)
         if i == 0 and tokens:
             logging.error("Not all input consumed")
@@ -378,10 +377,14 @@ class EBNFParser(object):
         :return: tuple of (boolean, CSTNode or None, list)
 
         """
-        self._report(i,
-                     "m:match '%s' against '%s' with %d remaining" % (parser_node.token.lexeme,
-                                                                    tokens[0].lexeme,
-                                                                    len(tokens)))
+        if not (parser_node.optional or parser_node.repeating):
+            if not tokens:
+                raise SyntaxError(
+                    "Unexpected end of tokens for %s" % parser_node)
+        self._report(
+            i,
+            "m:match '%s' against '%s' with %d remaining" % (
+                parser_node.token.lexeme, tokens[0].lexeme, len(tokens)))
         self._max_recursion_level = max(i, self._max_recursion_level)
         if parser_node.token.is_terminal:
             ok, res, tokens = self.match_terminal(parser_node, tokens, i)
@@ -402,18 +405,16 @@ class EBNFParser(object):
         node = CSTNode(parser_node.token.lexeme)
 
         if parser_node.token.symbol == RULE:
-            ok, child, tokens = self.match_rule(parser_node.token.lexeme, tokens, i+1)
+            ok, child, tokens = self.match_rule(parser_node.token.lexeme,
+                                                tokens, i+1)
             if child is not None:
-                # collapse_tree shortens long descendencies with only one child at the end
+                # collapse_tree shortens long descendencies with only one
+                # child at the end
                 if self.collapse_tree and len(child.children) == 1:
                     node.children.append(child.children[0])
                 else:
                     node.children.append(child)
-            #else:
-                #return None, tokens
-                #raise SyntaxError("did not match rule %s" % parser_node.token.lexeme)
         elif parser_node.token.symbol == LITERAL:
-
             if parser_node.token.lexeme == tokens[0].lexeme:
                 logging.debug("matching literal .. matched")
                 self._report(i, "mt:ate literal", tokens[0].lexeme)
@@ -435,10 +436,17 @@ class EBNFParser(object):
 
     def match_nonterminal(self, parser_node, tokens, i):
         self._calls[parser_node.token.symbol.name] += 1
-        self._report(i, "mnt:match_nonterminal '%s' with %d children against %d tokens" % (parser_node.token.lexeme, len(parser_node.children), len(tokens)))
+        self._report(
+            i,
+            ("mnt:match_nonterminal '%s' with %d children "
+             "against %d tokens") % (parser_node.token.lexeme,
+                                     len(parser_node.children), len(tokens)))
         symbol = self.symbol_table[parser_node.token.lexeme.split('-')[0]]
         node = CSTNode(Token(symbol, parser_node.token.lexeme))
         if not tokens:
+            self._report(i,
+                         "mnt:end of token stream. Current parser node is ",
+                         parser_node.token.lexeme)
             return False, None, tokens
 
         child = None
@@ -446,31 +454,47 @@ class EBNFParser(object):
         if parser_node.alternate:
             ok, child, tokens = self.match_alternate(parser_node, tokens, i+1)
 
-        elif parser_node.token.symbol == REPEATING:
+        elif parser_node.repeating:
             logging.debug("Handle repeating elements (0 or more)")
             self._report(i, "mnt:Matching Repeating Element",
                          parser_node.token.lexeme)
             ok, child, tokens = self.match_repeating(parser_node, tokens, i+1)
 
-        elif parser_node.token.symbol == SEQUENCE: # match a sequence
+        elif parser_node.optional:
+            self._report(
+                i,
+                "mnt:matching optional:", token_lexemes(parser_node.children))
+            ok, child, tokens = self.match_optional(parser_node, tokens, i+1)
+
+        elif parser_node.oneormore:
+            self._report(
+                i, "mnt:matching atleast once:",
+                token_lexemes(parser_node.children))
+            ok, child, tokens = self.match_one_or_more(parser_node, tokens, i+1)
+            if not ok:
+                raise SyntaxError("Did not find required seqence at least once")
+
+        elif parser_node.token.symbol == SEQUENCE:
             self._report(i, "mnt:Matching sequence:",
                          token_lexemes(parser_node.children))
             ok, found, tokens = self.match_sequence(parser_node.token.lexeme,
                                                     parser_node.children,
                                                     tokens, i+1)
-            self._report(i, "mnt:matched sequence, extending with", token_lexemes(found))
+            self._report(
+                i,
+                "mnt:matched sequence, extending with", token_lexemes(found))
             node.children.extend(found)
 
-        elif parser_node.token.symbol == OPTIONAL:
-            self._report(i, "mnt:matching optional:", token_lexemes(parser_node.children))
-            ok, child, tokens = self.match_optional(parser_node, tokens, i+1)
-
         else:
-            self._report(i, "mnt:ran out of options in match_nonterminal. error.")
+            self._report(i,
+                         "mnt:ran out of options in match_nonterminal. error.")
             raise SyntaxError("ran out of options in match_nonterminal")
 
         if child is not None:
-            self._report(i, "mnt:matched nonterminal, extending with", token_lexemes(child.children))
+            self._report(
+                i,
+                "mnt:matched nonterminal, extending with",
+                token_lexemes(child.children))
             node.children.extend(child.children)
 
         if node.children:
@@ -488,6 +512,25 @@ class EBNFParser(object):
                 token.lexeme, expected, tokens, i+1)
         if ok:
             node.children.extend(children)
+            return True, node, tokens
+        else:
+            return False, None, tokens
+
+    def match_one_or_more(self, parser_node, tokens, i):
+        self._calls['match_one_or_more'] += 1
+        token = parser_node.token
+        expected = parser_node.children
+        node = CSTNode(token)
+        self._report(i, 'atl:match one or more for', str(token))
+        ok, children, tokens = self.match_sequence(
+                token.lexeme, expected, tokens, i+1)
+        if not ok:
+            raise SyntaxError("Missing group: %s" % tokens)
+        while ok:
+            node.children.extend(children)
+            ok, children, tokens = self.match_sequence(
+                token.lexeme, expected, tokens, i+1)
+        if node.children:
             return True, node, tokens
         else:
             return False, None, tokens
@@ -540,12 +583,14 @@ class EBNFParser(object):
                     parser_node.token.lexeme, alternate, tokens, i+1)
             if ok:
                 logging.debug("..got it!")
-                self._report(i, "alt:matched alternate", token_lexemes(alternate))
+                self._report(i, "alt:matched alternate",
+                             token_lexemes(alternate))
                 node.children.extend(found)
                 # print_cstnode(node, i+1)
                 return True, node, remaining_tokens
             else:
-                self._report(i, "did not match alternate", token_lexemes(alternate))
+                self._report(i, "did not match alternate",
+                             token_lexemes(alternate))
                 logging.debug("did not match alrternate")
         self._report(i, "alt:all alternates failed")
         return False, None, tokens
@@ -553,20 +598,23 @@ class EBNFParser(object):
     def match_sequence(self, name, originals, tokens, i):
         """returns a list of CSTNodes and a list of remaining tokens"""
         self._calls['match_sequence'] += 1
-        expected = list(originals) # should create a copy
-        orig_tokens = list(tokens)
+        expected = list(originals)  # should create a copy
+        # orig_tokens = list(tokens)
 
         found = []
 
         while expected:
             this = expected[0]
             if not tokens:
-                self._report(i, "seq:sequence '%s' out of tokens, bailing" % name)
+                self._report(i,
+                             "seq:sequence '%s' out of tokens, bailing" % name)
+                if this.oneormore:
+                    raise SyntaxError('Expected %s and found nothing' % this)
                 return False, found, tokens
             self._report(
                     i,
-                    "seq:expecting in '%s': '%s', got '%s'" % (name,
-                        this.token.lexeme, tokens[0].lexeme))
+                    "seq:expecting in '%s': '%s', got '%s'" % (
+                        name, this.token.lexeme, tokens[0].lexeme))
             if tokens:
                 logging.debug("expecting: %s got %s", this, tokens[0])
             else:

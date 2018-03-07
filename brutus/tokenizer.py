@@ -5,11 +5,13 @@ import re
 
 from collections import namedtuple
 
+
 class Symbol(object):
     """Symbol(name)
     Base class for Terminal and NonTerminal Symbols
     """
     is_terminal = None
+
     def __init__(self, name):
         self._name = name
 
@@ -22,6 +24,13 @@ class Symbol(object):
         return "[%s %s]" % (self.__class__.__name__, self.name)
 
     __repr__ = __str__
+
+    def __eq__(self, other):
+        return((self.name, self.is_terminal) == (other.name, other.is_terminal))
+
+    def __hash__(self):
+        return hash(self.name) + self.is_terminal
+
 
 class QTerminal(Symbol):
     """Terminal symbol for tokenizers created by :class:`EBNFParser`."""
@@ -53,7 +62,7 @@ class Token(object):
     def symbol(self, newsymbol):
         if not isinstance(newsymbol, Symbol):
             raise ValueError("cannot update EBNFToken symbol to non Symbol")
-        
+
         self._symbol = newsymbol
 
     @property
@@ -67,15 +76,18 @@ class Token(object):
         """Returns True if the associated symbol is terminal"""
         return self._symbol.is_terminal
 
-
     def __str__(self):
-        return "<%s %s: %s >" % (self.symbol.name, self.__class__.__name__, self.lexeme)
+        return "<%s %s: %s>" % (self.symbol.name,
+                                self.__class__.__name__, self.lexeme)
 
     __repr__ = __str__
 
-    #def __eq__(self, other):
-    #    return (self.symbol, self.lexeme) == (other.symbol, other.lexeme)
-        
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return (self.symbol, self.lexeme) == (other.symbol, other.lexeme)
+
+
 Lexer = namedtuple('Lexer', 'pattern symbol')
 
 
@@ -115,7 +127,6 @@ class Tokenizer(object):
             self.lexers.append(Lexer(pattern,
                                      self.get_symbol(symbol_name)))
 
-
     def get_next_token(self):
         """get_next_token()
         Scans the for a token at the beginning of the text.
@@ -137,8 +148,12 @@ class Tokenizer(object):
                     lexeme = match.group()
                 self.text = self.text[match.end():]
                 if lexer.symbol is not None:
-                    # print(lexeme, ' '.join(self.text[:15].splitlines()))
+                    # print('lexeme and upcoming:', lexeme, '|',
+                    #       ' '.join(self.text[:15].splitlines()))
                     return self._t_class(lexer.symbol, lexeme)
+        if self.text:
+            raise SyntaxError("Could not tokenize %s %d" % (self.text,
+                                                            len(self.text)))
 
     def get_symbol(self, name):
         """Returns a symbol for the given name. This method is memoized."""
@@ -146,8 +161,8 @@ class Tokenizer(object):
 
     def get_matcher(self, pattern):
         """Returns a compiled regex for a pattern. This method is memoized."""
-        return self._compiled_lexers.setdefault(pattern,
-                                                re.compile(pattern, re.MULTILINE))
+        return self._compiled_lexers.setdefault(
+                pattern, re.compile(pattern, re.MULTILINE))
 
 
 if __name__ == '__main__':
@@ -161,7 +176,7 @@ if __name__ == '__main__':
     VMTokenizer.add_lexer(r'\.', 'STOP')
     VMTokenizer.add_lexer(r'-?[\d.]+', 'NUMBER')
 
-    VMTokenizer.add_lexer(r'\S+', 'SYMBOL')
+    # VMTokenizer.add_lexer(r'\S+', 'SYMBOL')
 
     print(list(VMTokenizer(""" # very simple choice, attack or run if too weak
 
@@ -179,4 +194,6 @@ if __name__ == '__main__':
     print(list(VMTokenizer('99 luftballoons')))
     print(list(VMTokenizer('4 label: item')))
     print(list(VMTokenizer('-9 to go')))
-    print(list(VMTokenizer('"word" he said')))
+    print(list(VMTokenizer('"word to yer mutha" he said')))
+    print(list(VMTokenizer('* what do you do with this?')))
+    print(VMTokenizer.text)

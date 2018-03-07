@@ -7,8 +7,8 @@ Simple Last-In-First-Out stack.
 
 class Stack:
     """Stack(items)
-    Simple LIFO stack. Supports pushing elements and lists, and poping from the top
-    of the stack.
+    Simple LIFO stack. Supports pushing elements and lists, and poping from
+    the top of the stack.
     """
 
     def __init__(self, items=None):
@@ -28,13 +28,10 @@ class Stack:
 
     def pop(self):
         """stack.pop()
-        Removes the top of the stack and returns that value. Raises IndexError if
-        the stack is empty
+        Removes the top of the stack and returns that value.
+        Raises IndexError if the stack is empty
         """
-        if self.is_empty:
-            raise IndexError("Cannot pop from empty stack")
-        else:
-            return self.items.pop()
+        return self.items.pop()
 
     @property
     def is_empty(self):

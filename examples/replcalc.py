@@ -9,7 +9,7 @@ import logging
 from brutus import Parser, Coder, BaseMachine
 from brutus.utils import print_xml, print_node
 
-text = """statement := expr | assignment  ;
+text = """statement := (expr | assignment)  ;
         assignment := "let" VAR STORE expr STOP;
         expr := term {("+" | "-") term};
         term := factor {("*" | "/") factor};
@@ -45,6 +45,7 @@ class MathCoder(Coder):
 p = Parser(text)
 print_node(p.rules[p.start_rule])
 print_node(p.rules['assignment'])
+print_node(p.rules['expr'])
 
 mather = BaseMachine('math')
 
