@@ -175,8 +175,10 @@ if __name__ == '__main__':
     VMTokenizer.add_lexer(r'[a-zA-Z_]+', 'NAME')
     VMTokenizer.add_lexer(r'\.', 'STOP')
     VMTokenizer.add_lexer(r'-?[\d.]+', 'NUMBER')
-
-    # VMTokenizer.add_lexer(r'\S+', 'SYMBOL')
+    VMTokenizer.add_lexer(r'[<>]', 'COMPARISON')
+    # VMTokenizer.add_lexer(r'[-+/*]', 'BINOP')
+    # VMTokenizer.add_lexer(r'[?!]', 'SENTENCEENDING')
+    VMTokenizer.add_lexer(r'\S+', 'SYMBOL')
 
     print(list(VMTokenizer(""" # very simple choice, attack or run if too weak
 

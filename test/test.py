@@ -62,6 +62,7 @@ class TokenizerTest(unittest.TestCase):
     tokenizer.add_lexer(r'[a-zA-Z_]+', 'NAME')
     tokenizer.add_lexer(r'\.', 'STOP')
     tokenizer.add_lexer(r'-?[\d.]+', 'NUMBER')
+    tokenizer.add_lexer(r'[-+*/]', 'BINOP')
 
     tokenizer.add_lexer(r'\S+', 'SYMBOL')
 
@@ -88,6 +89,12 @@ class TokenizerTest(unittest.TestCase):
 
     def test_symbol(self):
         self.assertEqual(symbols(self.tokenizer('%')), 'SYMBOL')
+
+    def test_binop(self):
+        self.assertEqual(symbols(self.tokenizer('-')), 'BINOP')
+        self.assertEqual(symbols(self.tokenizer('+')), 'BINOP')
+        self.assertEqual(symbols(self.tokenizer('/')), 'BINOP')
+        self.assertEqual(symbols(self.tokenizer('*')), 'BINOP')
 
 
 class ParserTest(unittest.TestCase):
@@ -179,20 +186,20 @@ class CalcTest(unittest.TestCase):
         VAR := [a-z]+;
         INTEGER := -?[0-9]+;
         STORE := <-;
-        BINOP := [+\-*/];
+        BINOP := [-+*/];
         STOP := [\.];
         PARENS := [()];
         """
     parser = Parser(text)
 
     def setUp(self):
-        logging.root.setLevel(logging.INFO)
+        logging.root.setLevel(logging.DEBUG)
 
     def tearDown(self):
         logging.root.setLevel(logging.INFO)
 
-    def skip_test_simple(self):
-        ok, node, detritus = self.parser.parse_text("x <- 2 - 1.")
+    def test_simple(self):
+        ok, node, detritus = self.parser.parse_text("x <- 2 * 1.")
         self.assertTrue(ok)
         self.assertListEqual(detritus, [])
         self.assertEqual(node.token.lexeme, 'statements')
@@ -255,17 +262,24 @@ class AtLeastOnce(unittest.TestCase):
         self.assertFalse(second.repeating)
 
     def test_atleastonce(self):
-        ok, node, detritus = self.parser.parse_text("ab")
-        self.assertTrue(ok)
-        ok, node, detritus = self.parser.parse_text("abb")
-        self.assertTrue(ok)
-        ok, node, detritus = self.parser.parse_text("abbb")
-        self.assertTrue(ok)
-        ok, node, detritus = self.parser.parse_text("abbbb")
-        self.assertTrue(ok)
+        for text in ["ab", "abb", "abbb", "abbb"]:
+            ok, node, detritus = self.parser.parse_text(text)
+            self.assertTrue(ok)
+            self.assertListEqual(detritus, [])
 
     def test_failure(self):
         self.assertRaises(SyntaxError, self.parser.parse_text, "a")
+
+
+class ZeroOrMore(unittest.TestCase):
+    text = '''statement := A {B}; A:= [a]; B:= [b];'''
+    parser = Parser(text)
+
+    def test_zeroormore(self):
+        for text in ["a", "ab", "abb", "abbb"]:
+            ok, node, detritus = self.parser.parse_text(text)
+            self.assertTrue(ok)
+            self.assertListEqual(detritus, [])
 
 
 if __name__ == '__main__':
