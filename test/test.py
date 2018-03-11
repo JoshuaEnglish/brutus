@@ -126,6 +126,66 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(bracket.token.symbol.name, 'TERM')
 
 
+# NEED TO TEST FOR ALTERTANE SEQUENCES AND RULES, NOT JUST ALTERNATE TOKENS
+class OrSequenceTest(unittest.TestCase):
+    text = """thing := A B | C D;
+        A := [a];
+        B := [b];
+        C := [c];
+        D := [d];
+        """
+
+    parser = Parser(text)
+
+    def test_ab(self):
+        self.parser.parse_text('ab')
+
+    def test_cd(self):
+        self.parser.parse_text('cd')
+
+    def test_ac(self):
+        self.assertRaises(ValueError, self.parser.parse_text, 'ac')
+
+    def test_bd(self):
+        self.assertRaises(ValueError, self.parser.parse_text, 'bd')
+
+
+class OrSequenceTestWithCommonStart(unittest.TestCase):
+    text = """thing := A B | A D;
+        A := [a];
+        B := [b];
+        C := [c];
+        D := [d];
+        """
+
+    parser = Parser(text)
+
+    def test_ab(self):
+        self.parser.parse_text('ab')
+
+    def test_ad(self):
+        self.parser.parse_text('ad')
+
+
+class OrSequenceTestWithRules(unittest.TestCase):
+    text = """thing := this | that;
+        this := A B;
+        that := A D;
+        A := [a];
+        B := [b];
+        C := [c];
+        D := [d];
+        """
+
+    parser = Parser(text)
+
+    def test_ab(self):
+        self.parser.parse_text('ab')
+
+    def test_ad(self):
+        self.parser.parse_text('ad')
+
+
 class OrTest(unittest.TestCase):
     text = """thing := NUMBER | LETTER;
         LETTER := [a-z];
@@ -180,26 +240,27 @@ class IffyTest(unittest.TestCase):
 class CalcTest(unittest.TestCase):
     text = """statements := assignment { assignment } ;
         assignment := VAR STORE expr STOP;
-        expr := term {("+" | "-") term};
-        term := factor {("*" | "/") factor};
+        expr := term { EXPROP term};
+        term := factor { TERMOP factor};
         factor := INTEGER | VAR | "(" expr ")";
         VAR := [a-z]+;
         INTEGER := -?[0-9]+;
         STORE := <-;
-        BINOP := [-+*/];
+        EXPROP :=[-+];
+        TERMOP :=[*/];
         STOP := [\.];
         PARENS := [()];
         """
     parser = Parser(text)
 
     def setUp(self):
-        logging.root.setLevel(logging.DEBUG)
+        logging.root.setLevel(logging.INFO)
 
     def tearDown(self):
         logging.root.setLevel(logging.INFO)
 
     def test_simple(self):
-        ok, node, detritus = self.parser.parse_text("x <- 2 * 1.")
+        ok, node, detritus = self.parser.parse_text("x <- 2 - 1.")
         self.assertTrue(ok)
         self.assertListEqual(detritus, [])
         self.assertEqual(node.token.lexeme, 'statements')
@@ -207,6 +268,10 @@ class CalcTest(unittest.TestCase):
         child = node.children[0]
         self.assertEqual(child.token.lexeme, 'assignment')
         self.assertEqual(len(child.children), 4)
+        self.assertEqual(child.children[0].token.lexeme, 'x')
+        self.assertEqual(child.children[1].token.lexeme, '<-')
+        self.assertEqual(child.children[2].token.lexeme, 'expr')
+        self.assertEqual(child.children[3].token.lexeme, '.')
 
 
 class OptionalTest(unittest.TestCase):
