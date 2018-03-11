@@ -10,14 +10,15 @@ from brutus import Parser, Coder, BaseMachine
 from brutus.utils import print_xml, print_node
 
 text = """statements := assignment { assignment } ;
-        assignment := VAR STORE expr STOP;
-        expr := term {("+" | "-") term};
-        term := factor {("*" | "/") factor};
+        assignment := VAR STORE expr STOP [COMMENT];
+        expr := term { EXPROP term };
+        term := factor { TERMOP factor };
         factor := INTEGER | VAR | "(" expr ")";
         VAR := [a-z]+;
         INTEGER := -?[0-9]+;
         STORE := <-;
-        BINOP := [+\-*/];
+        EXPROP := [-+];
+        TERMOP := [*/];
         STOP := [\.];
         PARENS := [()];
         COMMENT := #.*$;
@@ -29,10 +30,11 @@ print_node(p.rules['statements'])
 
 print("\nParser Tree for assignment:")
 print_node(p.rules['assignment'])
-program = """a <- 2*7+3*4 .
+double = """a <- 2*7+6/3 . # we're gonna use this in a second
 b<-a/2."""
-simple = """x <- 2 - 1. # comment"""
+simple = """x <- 2 - 1. # some comment"""
 
+program = double
 print("\nProgram:")
 print(program)
 
@@ -52,18 +54,21 @@ except SyntaxError as E:
 class MathCoder(Coder):
     encode_integer = Coder.encode_terminal
 
-    encode_binop = Coder.handle_terminal
+    encode_exprop = Coder.handle_terminal
+    encode_termop = Coder.handle_terminal
     encode_parens = Coder.do_nothing
     encode_var = Coder.handle_terminal
     encode_factor = Coder.handle_children
     encode_statements = Coder.handle_children
     encode_expr = Coder.handle_binary_node
     encode_term = Coder.handle_binary_node
+    encode_comment = Coder.do_nothing
 
     def encode_assignment(self, node):
-        variable, op, stuff, stop = node.children
+        variable, op, stuff, stop = node.children[:4]
         self.handle_node(stuff)
         self.code.append("{}'".format(variable.token.lexeme))
+
 
 coder = MathCoder()
 code = coder.encode(node)
