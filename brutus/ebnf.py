@@ -579,8 +579,13 @@ class EBNFParser(object):
             logging.debug("trying alternate: %s against %s",
                           token_lexemes(alternate), preview)
             self._report(i, "alt:trying alternate", token_lexemes(alternate))
-            ok, found, remaining_tokens = self.match_sequence(
-                    parser_node.token.lexeme, alternate, tokens, i+1)
+            # Experiment 3/10
+            try:
+                ok, found, remaining_tokens = self.match_sequence(
+                        parser_node.token.lexeme, alternate, tokens, i+1)
+            except ValueError:
+                logging.debug('alternate failed from value error')
+                ok = False
             if ok:
                 logging.debug("..got it!")
                 self._report(i, "alt:matched alternate",

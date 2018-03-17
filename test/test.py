@@ -167,6 +167,17 @@ class OrSequenceTestWithCommonStart(unittest.TestCase):
         self.parser.parse_text('ad')
 
 
+class RuleMustGetEverything(unittest.TestCase):
+    text = """this := A B; A := [a]; B := [b];"""
+    parser = Parser(text)
+
+    def test_okily_dokily(self):
+        ok, node, detrituse = self.parser.parse_text('ab')
+
+    def test_nope(self):
+        self.assertRaises(ValueError, self.parser.parse_text, 'a')
+
+
 class OrSequenceTestWithRules(unittest.TestCase):
     text = """thing := this | that;
         this := A B;
@@ -179,10 +190,15 @@ class OrSequenceTestWithRules(unittest.TestCase):
 
     parser = Parser(text)
 
+    def tearDown(self):
+        logging.root.setLevel(logging.INFO)
+        self.parser.report()
+
     def test_ab(self):
         self.parser.parse_text('ab')
 
     def test_ad(self):
+        logging.root.setLevel(logging.DEBUG)
         self.parser.parse_text('ad')
 
 
