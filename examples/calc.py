@@ -30,6 +30,10 @@ print_node(p.rules['statements'])
 
 print("\nParser Tree for assignment:")
 print_node(p.rules['assignment'])
+
+print("\nParser Tree for factor")
+print_node(p.rules['factor'])
+
 double = """a <- 2*7+6/3 . # we're gonna use this in a second
 b<-a/2."""
 simple = """x <- 2 - 1. # some comment"""

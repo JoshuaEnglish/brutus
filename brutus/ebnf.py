@@ -149,7 +149,7 @@ def make_parser_node(name, tokens, endtoken=None):
         return None, []
     logging.debug("make_parser_node for '%s' with %d tokens", name, len(tokens))
 
-    this = EBNFNode(EBNFToken(SEQUENCE, name))
+    this = EBNFNode(EBNFToken(SEQUENCE, name, 0, 0))
     logging.debug("this is %x", id(this))
 
     while tokens:
@@ -282,17 +282,9 @@ class EBNFParser(object):
         kept_tokens = {}  # try to keep references to only one token
         for key, val in data:
             key = key.strip()
-            if self.start_rule is None:
-                if key.islower():
-                    self.start_rule = key
             if key in self.symbol_table:
                 raise SyntaxError('rule for %s already exists' % key)
-            # ebnf_tokens = list(EBNFTokenizer(val))
 
-            # for token in ebnf_tokens:
-            #     if token.symbol == EBNFTokenizer.symbols['TERM']:
-            #        if token.lexeme not in self.tokenizer.symbols:
-            #             self.tokenizer.symbols[token.lexeme] = None
             if key.islower():
                 ebnf_tokens = list(EBNFTokenizer(val))
                 parser_node, remaining = make_parser_node(key, ebnf_tokens)
@@ -309,6 +301,7 @@ class EBNFParser(object):
                 self.tokenizer.add_lexer(val.strip(), key)
                 self.symbol_table[key] = EBNFTerminalSymbol(key)
 
+        self.start_rule = next(iter(self.rules.keys()))
         self.kept_tokens = kept_tokens
         logging.debug("EBNFParser.__init__() end")
 
@@ -333,7 +326,7 @@ class EBNFParser(object):
         """
         self._report_list = []
         self._max_recursion_level = 0
-        self.tokenizer.text = text
+        self.tokenizer(text)
         tokens = list(self.tokenizer)
         # print("Parsing tokens:", tokens)
         return self.parse(tokens)
@@ -350,23 +343,24 @@ class EBNFParser(object):
         """
         self._calls[rule] += 1
         parser_node = self.rules.get(rule)
-        self._report(i, "mr:trying rule", parser_node.token.lexeme,
-                     token_lexemes(parser_node.children), lexemes(tokens))
 
         if parser_node is None:
             logging.exception("No rule for %s", rule)
             raise SyntaxError("No rule for {}".format(rule))
 
-        logging.debug("matching rule %s for %d tokens with %s",
+        self._report(i, "mr:trying rule", parser_node.token.lexeme,
+                     token_lexemes(parser_node.children), lexemes(tokens))
+
+        logging.debug("matching rule `%s` for %d tokens with %s",
                       rule, len(tokens), parser_node)
 
         if not isinstance(parser_node.token, EBNFToken):
             raise ValueError("parser node missing required EBNFToken")
 
-        ok, node, tokens = self.match(parser_node, tokens, i)
+        ok, node, tokens = self.match(parser_node, tokens, i+1)
         if i == 0 and tokens:
             logging.error("Not all input consumed")
-            raise ValueError("not all input consumed %s" % tokens)
+            raise ValueError("not all input consumed %s" % tokens[:3])
         return ok, node, tokens
 
     def match(self, parser_node: EBNFNode, tokens: list, i: int):
@@ -442,7 +436,8 @@ class EBNFParser(object):
              "against %d tokens") % (parser_node.token.lexeme,
                                      len(parser_node.children), len(tokens)))
         symbol = self.symbol_table[parser_node.token.lexeme.split('-')[0]]
-        node = CSTNode(Token(symbol, parser_node.token.lexeme))
+        node = CSTNode(Token(symbol, parser_node.token.lexeme,
+                             parser_node.token.start, parser_node.token.end))
         if not tokens:
             self._report(i,
                          "mnt:end of token stream. Current parser node is ",
@@ -574,7 +569,9 @@ class EBNFParser(object):
 
         node = CSTNode(parser_node.token)
 
+        original_tokens = list(tokens)
         for alternate in alternates:
+            tokens = list(original_tokens)
             preview = tokens[0] if tokens else "No tokens"
             logging.debug("trying alternate: %s against %s",
                           token_lexemes(alternate), preview)
@@ -604,7 +601,7 @@ class EBNFParser(object):
         """returns a list of CSTNodes and a list of remaining tokens"""
         self._calls['match_sequence'] += 1
         expected = list(originals)  # should create a copy
-        # orig_tokens = list(tokens)
+        orig_tokens = list(tokens)
 
         found = []
 
@@ -615,7 +612,8 @@ class EBNFParser(object):
                              "seq:sequence '%s' out of tokens, bailing" % name)
                 if this.oneormore:
                     raise SyntaxError('Expected %s and found nothing' % this)
-                return False, found, tokens
+                # return False, found, tokens
+                break
             self._report(
                     i,
                     "seq:expecting in '%s': '%s', got '%s'" % (
@@ -638,4 +636,6 @@ class EBNFParser(object):
                      'expecting: %s against %s' % (
                          token_lexemes(expected), lexemes(tokens))))
 
+        if expected:
+            return False, [], orig_tokens
         return ok, found, tokens

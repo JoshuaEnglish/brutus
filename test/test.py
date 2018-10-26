@@ -4,6 +4,9 @@ import logging
 from brutus import Parser
 from brutus.tokenizer import Symbol, QTerminal, QNonTerminal, Token, Tokenizer
 
+logging.basicConfig(format="%(levelname)s:%(filename)s:%(lineno)d:%(message)s")
+logging.disable(logging.CRITICAL)
+
 
 class SymbolTest(unittest.TestCase):
     def test_qterm(self):
@@ -22,7 +25,7 @@ class SymbolTest(unittest.TestCase):
 class TokenTest(unittest.TestCase):
     def test_token_creation(self):
         s = QTerminal('test')
-        t = Token(s, 'something')
+        t = Token(s, 'something', 0, 0)
         self.assertEqual(t.lexeme, 'something')
         self.assertEqual(t.value, 'something')
         self.assertEqual(t.symbol.name, 'test')
@@ -30,13 +33,13 @@ class TokenTest(unittest.TestCase):
     def test_token_symbolreassignment(self):
         temp = QTerminal('temp')
         final = QTerminal('final')
-        token = Token(temp, 'temp')
+        token = Token(temp, 'temp', 0, 0)
         token.symbol = final
         self.assertEqual(token.symbol.name, 'final')
 
     def test_token_is_terminal_passthrough(self):
         term = QTerminal('terminal')
-        token = Token(term, 'a token')
+        token = Token(term, 'a token', 0, 0)
         self.assertTrue(token.is_terminal)
         token.symbol = QNonTerminal('nonterminal')
         self.assertFalse(token.is_terminal)
@@ -137,6 +140,18 @@ class OrSequenceTest(unittest.TestCase):
 
     parser = Parser(text)
 
+    def test_got_an_alternator(self):
+        "Starting rule should have alternate flag when appropriate"
+        rule = self.parser.rules[self.parser.start_rule]
+        self.assertTrue(
+            rule.alternate,
+            "Parser did not create an alternating rule")
+        self.assertFalse(
+            rule.optional,
+            "Parser created an optional rule when it shouldn't have"
+            )
+        self.assertFalse(rule.repeating, "Parser created repeating rule when it shouldn't have")
+
     def test_ab(self):
         self.parser.parse_text('ab')
 
@@ -172,7 +187,9 @@ class RuleMustGetEverything(unittest.TestCase):
     parser = Parser(text)
 
     def test_okily_dokily(self):
-        ok, node, detrituse = self.parser.parse_text('ab')
+        ok, node, detritus = self.parser.parse_text('ab')
+        self.assertTrue(ok)
+        self.assertListEqual(detritus, [])
 
     def test_nope(self):
         self.assertRaises(ValueError, self.parser.parse_text, 'a')
@@ -193,6 +210,9 @@ class OrSequenceTestWithRules(unittest.TestCase):
     def tearDown(self):
         logging.root.setLevel(logging.INFO)
         self.parser.report()
+
+    def test_setup(self):
+        self.assertTrue(self.parser.rules['thing'].alternate)
 
     def test_ab(self):
         self.parser.parse_text('ab')
@@ -364,4 +384,4 @@ class ZeroOrMore(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(verbosity=2)
+    unittest.main(verbosity=2, defaultTest=['OrSequenceTest', ])

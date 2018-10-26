@@ -47,11 +47,13 @@ class Token(object):
     Container for text (the lexeme) with a symbol defining the role of
     the text.
     """
-    __slots__ = ('_symbol', '_lexeme')
+    __slots__ = ('_symbol', '_lexeme', '_start', '_end')
 
-    def __init__(self, symbol, lexeme):
+    def __init__(self, symbol, lexeme, start, end):
         self.symbol = symbol  # always a terminal symbol
         self._lexeme = lexeme
+        self._start = start
+        self._end = end
 
     @property
     def symbol(self):
@@ -77,8 +79,9 @@ class Token(object):
         return self._symbol.is_terminal
 
     def __str__(self):
-        return "<%s %s: %s>" % (self.symbol.name,
-                                self.__class__.__name__, self.lexeme)
+        return "<%s %s: %s (%d:%d)>" % (self.symbol.name,
+                                        self.__class__.__name__, self.lexeme,
+                                        self._start, self._end)
 
     __repr__ = __str__
 
@@ -86,6 +89,18 @@ class Token(object):
         if not isinstance(other, self.__class__):
             return False
         return (self.symbol, self.lexeme) == (other.symbol, other.lexeme)
+
+    @property
+    def start(self):
+        return self._start
+
+    @property
+    def end(self):
+        return self._end
+
+    @property
+    def span(self):
+        return (self._start, self._end)
 
 
 Lexer = namedtuple('Lexer', 'pattern symbol')
@@ -101,9 +116,13 @@ class Tokenizer(object):
         self.lexers = []
         self._compiled_lexers = {}
         self.symbols = {}
+        self._pos = 0
+        self._end = 0
 
     def __call__(self, text):
         self.text = text
+        self._pos = 0
+        self._end = 0
         return self
 
     def __iter__(self):
@@ -150,7 +169,13 @@ class Tokenizer(object):
                 if lexer.symbol is not None:
                     # print('lexeme and upcoming:', lexeme, '|',
                     #       ' '.join(self.text[:15].splitlines()))
-                    return self._t_class(lexer.symbol, lexeme)
+                    self._pos = self._end
+                    self._end += match.end()
+                    return self._t_class(lexer.symbol, lexeme,
+                                         self._pos, self._end)
+                else:
+                    self._pos = self._end
+                    self._end += match.end()
         if self.text:
             raise SyntaxError("Could not tokenize %s %d" % (self.text,
                                                             len(self.text)))

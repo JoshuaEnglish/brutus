@@ -154,7 +154,7 @@ class VM(object):
             raise ValueError("Function cannot contain white space")
 
         # Make sure that caller is valid (if there)
-        if caller and not isinstance(caller, collections.Callable):
+        if caller and not callable(caller):
             raise ValueError('Caller must be string or callable')
         # Add the matches to
         self.reservedwords.extend(matches)
@@ -200,7 +200,7 @@ class VM(object):
         on them, and push the result onto the stack.
         The operator must accept integer inputs.
         """
-        if not isinstance(op, collections.Callable):
+        if not callable(op):
             raise ValueError("operation needs to be callable")
         self.add_rule(matches, 'do_binary_op', op)
 
@@ -211,7 +211,7 @@ class VM(object):
         stack.
         This takes an operator that expects integers as parameters.
         """
-        if not isinstance(op, collections.Callable):
+        if not callable(op):
             raise ValueError("operation must be callable")
         self.add_rule(matches, 'do_unary_op', op)
 
